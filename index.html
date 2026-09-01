@@ -84,11 +84,15 @@ button{cursor:pointer}
 }
 .panel-head h2{font-size:16px;margin:0}
 .panel-head .sub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45}
-.map-scroll{overflow:auto;padding:16px}
+.map-mobile-tools{display:none}
+.map-scroll{overflow:auto;padding:16px;overscroll-behavior:contain}
+.map-stage{position:relative;width:1040px;height:1480px;margin:0 auto}
 .parking-map{
-  width:1040px;height:1480px;position:relative;margin:0 auto;
+  width:1040px;height:1480px;position:absolute;left:0;top:0;
   border:1px dashed #cbd4e0;border-radius:14px;background:#fff;
+  transform-origin:top left;will-change:transform;
 }
+.map-return-dock{display:none}
 .block-label{
   position:absolute;font-size:12px;font-weight:900;color:#8a94a5;
 }
@@ -98,6 +102,7 @@ button{cursor:pointer}
   font-size:12px;font-weight:700;color:#18202c;user-select:none;
   transition:background-color .1s ease,outline-color .1s ease;
   appearance:none;padding:0;border-radius:0;
+  -webkit-tap-highlight-color:transparent;touch-action:pan-x pan-y;
 }
 .slot:hover{z-index:8;outline:2px solid var(--primary)}
 .slot.small{
@@ -272,21 +277,45 @@ button{cursor:pointer}
   .topbar{position:static;align-items:flex-start;flex-direction:column;padding:13px 12px}
   .brand p{line-height:1.45}
   .header-actions{display:grid;grid-template-columns:1fr;width:100%}
-  .header-actions .btn{min-height:44px}
+  .header-actions .btn{min-height:48px;touch-action:manipulation}
   .layout{padding:10px;gap:10px}
   .side{gap:10px}
   .info-grid{grid-template-columns:1fr}
   .panel,.modal{border-radius:12px}
-  .map-scroll{max-height:72vh;padding:10px;-webkit-overflow-scrolling:touch}
+  .map-mobile-tools{
+    display:grid;grid-template-columns:44px 58px 44px minmax(94px,1fr);gap:6px;
+    position:sticky;top:0;z-index:20;padding:8px 10px;background:#fff;border-bottom:1px solid #e7ebf1;
+  }
+  .map-mobile-tools .btn{min-height:44px;padding:7px 8px;touch-action:manipulation}
+  .map-mobile-tools select{
+    min-width:0;border:1px solid var(--line);border-radius:10px;background:#fff;padding:0 8px;font-weight:800;font-size:12px;
+  }
+  .map-scroll{
+    height:min(62vh,560px);max-height:none;padding:10px;-webkit-overflow-scrolling:touch;
+    scroll-behavior:smooth;touch-action:pan-x pan-y;overscroll-behavior:contain;
+  }
+  .parking-map{margin:0}
+  .slot{font-size:13px}
+  .slot.return-pickable{outline-offset:-1px}
   .form-grid,.management-grid{grid-template-columns:1fr}
   .form-grid .span-2{grid-column:auto}
   .modal-bg{padding:0;align-items:flex-end}
-  .modal,.modal.wide{width:100%;max-height:94vh;border-radius:16px 16px 0 0}
-  .modal-actions{position:sticky;bottom:0;background:#fff}
-  .modal-actions .btn{min-height:46px;flex:1}
+  .modal,.modal.wide{width:100%;max-height:94dvh;border-radius:16px 16px 0 0}
+  .modal-body{-webkit-overflow-scrolling:touch}
+  .modal-actions{position:sticky;bottom:0;z-index:3;background:#fff;padding-bottom:max(14px,env(safe-area-inset-bottom))}
+  .modal-actions .btn{min-height:50px;flex:1;touch-action:manipulation}
   .photo-actions{grid-template-columns:1fr}
-  .photo-action{min-height:50px}
-  .action-row .btn{min-height:46px}
+  .photo-action{min-height:50px;touch-action:manipulation}
+  .action-row .btn{min-height:50px;touch-action:manipulation}
+  .return-panel .btn{touch-action:manipulation}
+  body.return-mode-active .map-return-dock{
+    display:flex;position:fixed;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));z-index:95;
+    align-items:center;gap:8px;padding:9px;background:rgba(255,255,255,.96);border:1px solid #d7ccf4;
+    border-radius:14px;box-shadow:0 10px 30px rgba(32,49,75,.18);backdrop-filter:blur(8px);
+  }
+  .map-return-dock .dock-slot{flex:1;min-width:0;font-size:13px;font-weight:900;color:#5a32aa}
+  .map-return-dock .btn{min-height:44px;white-space:nowrap;touch-action:manipulation}
+  body.return-mode-active{padding-bottom:74px}
 }
 @media print{
   @page{size:A4 landscape;margin:7mm}
@@ -325,16 +354,32 @@ button{cursor:pointer}
 </header>
 
 <main class="layout" aria-label="회사 차량 관리">
-  <section class="panel" aria-labelledby="parkingTitle">
+  <section class="panel" id="parkingPanel" aria-labelledby="parkingTitle">
     <div class="panel-head">
       <div>
         <h2 id="parkingTitle">주차장 배치도</h2>
         <div class="sub">실제 배치를 기준으로 구성했습니다. 하단 1~24번과 좌측 ‘경차 1~8’은 경차 주차면입니다.</div>
       </div>
     </div>
-    <div class="mode-banner" id="modeBanner" role="status">반납 위치 선택 중입니다. 배치도에서 주차면을 클릭해 주세요.</div>
-    <div class="map-scroll">
-      <div class="parking-map" id="parkingMap" aria-label="주차면 배치도"></div>
+    <div class="mode-banner" id="modeBanner" role="status">반납 위치 선택 중입니다. 배치도에서 주차면을 선택해 주세요.</div>
+    <div class="map-mobile-tools" id="mapMobileTools" aria-label="모바일 주차장 지도 도구">
+      <button class="btn" type="button" id="mapZoomOutBtn" aria-label="주차장 지도 축소">−</button>
+      <button class="btn" type="button" id="mapZoomResetBtn" aria-label="주차장 지도 100퍼센트">100%</button>
+      <button class="btn" type="button" id="mapZoomInBtn" aria-label="주차장 지도 확대">＋</button>
+      <select id="mapJumpSelect" aria-label="주차장 구역 바로가기">
+        <option value="">구역 이동</option>
+        <option value="top">상단</option>
+        <option value="abc">A · B · C열</option>
+        <option value="def">D · E · F열</option>
+        <option value="ghi">G · H · I열</option>
+        <option value="left">좌측 주차면</option>
+        <option value="bottom">하단 경차</option>
+      </select>
+    </div>
+    <div class="map-scroll" id="mapViewport">
+      <div class="map-stage" id="mapStage">
+        <div class="parking-map" id="parkingMap" aria-label="주차면 배치도"></div>
+      </div>
     </div>
     <div class="legend">
       <span><i class="normal"></i> 일반 주차면</span>
@@ -532,6 +577,11 @@ button{cursor:pointer}
   </div>
 </div>
 
+<div class="map-return-dock" id="mapReturnDock" aria-live="polite">
+  <div class="dock-slot" id="mapReturnDockText">반납 위치를 선택해 주세요.</div>
+  <button class="btn primary" type="button" id="returnInputJumpBtn">반납 입력으로</button>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <section class="print-sheet" id="printSheet" aria-label="차량 운행일지 인쇄 영역"></section>
@@ -557,6 +607,10 @@ const FIREBASE_STATE_DOC = firestore.collection('companyCar').doc('main');
 const FIREBASE_PHOTO_COLLECTION = firestore.collection('returnPhotos');
 let firebaseReady = false;
 let firebaseUnsubscribe = null;
+let firebaseWritePromise = Promise.resolve();
+let deferredFirebaseRefresh = false;
+let deferredRefreshTimer = null;
+const activeTouchPointers = new Set();
 
 const STORAGE_KEY = 'companyCarSingleProto_v1';
 const DB_NAME = 'CompanyCarSinglePhotoDB';
@@ -641,6 +695,11 @@ let returnPhotoFile = null;
 let returnPreviewUrl = '';
 let lastFocusedElement = null;
 let dbPromise = null;
+let mapScale = 1;
+let mapTouchStart = null;
+let suppressMapClickUntil = 0;
+const MAP_WIDTH = 1040;
+const MAP_HEIGHT = 1480;
 
 function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
 function normalizeSlotId(value=''){
@@ -685,19 +744,46 @@ function setFirebaseStatus(mode,text){
   el.textContent=text;
 }
 
+function hasBlockingInteraction(){
+  return returnMode || activeTouchPointers.size>0 || !!document.querySelector('.modal-bg.show');
+}
+
+function scheduleDeferredFirebaseRefresh(){
+  if(!deferredFirebaseRefresh || hasBlockingInteraction()) return;
+  clearTimeout(deferredRefreshTimer);
+  deferredRefreshTimer=setTimeout(async()=>{
+    if(!deferredFirebaseRefresh || hasBlockingInteraction()) return;
+    try{
+      await firebaseWritePromise.catch(()=>{});
+      const snapshot=await FIREBASE_STATE_DOC.get();
+      if(snapshot.exists && snapshot.data()?.state && !hasBlockingInteraction()){
+        state=normalizeLoadedState(snapshot.data().state);
+        saveLocalState();
+        renderAll();
+      }
+      deferredFirebaseRefresh=false;
+      setFirebaseStatus('online','Firebase 동기화됨');
+    }catch(error){
+      console.warn('지연 동기화 새로고침 실패:',error);
+    }
+  },350);
+}
+
 function saveState(){
   // Firebase 장애 시에도 현재 PC에서 데이터가 사라지지 않도록 로컬 백업 유지
   saveLocalState();
-  if(!firebaseReady) return;
+  if(!firebaseReady) return Promise.resolve(false);
 
-  FIREBASE_STATE_DOC.set({
+  firebaseWritePromise=FIREBASE_STATE_DOC.set({
     state:clone(state),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-  },{merge:true}).catch(error=>{
+  },{merge:true}).then(()=>true).catch(error=>{
     console.error('Firebase 상태 저장 실패:',error);
     setFirebaseStatus('offline','Firebase 저장 오류 · 로컬 백업');
     toast('Firebase 저장에 실패하여 현재 PC에만 임시 저장했습니다.');
+    return false;
   });
+  return firebaseWritePromise;
 }
 
 async function initializeFirebaseSync(){
@@ -721,6 +807,11 @@ async function initializeFirebaseSync(){
 
     firebaseUnsubscribe=FIREBASE_STATE_DOC.onSnapshot(snapshot=>{
       if(!snapshot.exists || !snapshot.data()?.state) return;
+      if(hasBlockingInteraction()){
+        deferredFirebaseRefresh=true;
+        setFirebaseStatus('online','Firebase 동기화 대기');
+        return;
+      }
       state=normalizeLoadedState(snapshot.data().state);
       saveLocalState();
       renderAll();
@@ -807,8 +898,7 @@ function renderMap(){
   map.replaceChildren(fragment);
 }
 
-document.getElementById('parkingMap').addEventListener('click',e=>{
-  const slot=e.target.closest('[data-slot]');
+function selectParkingSlot(slot){
   if(!slot) return;
   const slotId=slot.dataset.slot;
   if(returnMode){
@@ -818,11 +908,40 @@ document.getElementById('parkingMap').addEventListener('click',e=>{
     slot.classList.add('return-selected');
     slot.setAttribute('aria-pressed','true');
     document.getElementById('selectedSlotText').textContent=slotId;
+    document.getElementById('mapReturnDockText').textContent=`선택 위치: ${slotId}`;
+    toast(`${slotId} 반납 위치를 선택했습니다.`);
     return;
   }
   toast(state.car.status==='available' && state.car.slot===slotId
     ? `${slotId} · ${state.car.name} 주차 위치`
     : `${slotId} 주차면`);
+}
+
+const parkingMapEl=document.getElementById('parkingMap');
+parkingMapEl.addEventListener('pointerdown',e=>{
+  if(e.pointerType!=='touch') return;
+  const slot=e.target.closest('[data-slot]');
+  if(!slot) return;
+  mapTouchStart={pointerId:e.pointerId,x:e.clientX,y:e.clientY,slot,moved:false};
+});
+parkingMapEl.addEventListener('pointermove',e=>{
+  if(!mapTouchStart || e.pointerId!==mapTouchStart.pointerId) return;
+  if(Math.hypot(e.clientX-mapTouchStart.x,e.clientY-mapTouchStart.y)>10) mapTouchStart.moved=true;
+});
+parkingMapEl.addEventListener('pointerup',e=>{
+  if(!mapTouchStart || e.pointerId!==mapTouchStart.pointerId) return;
+  const touch=mapTouchStart;
+  mapTouchStart=null;
+  if(!touch.moved){
+    suppressMapClickUntil=Date.now()+700;
+    selectParkingSlot(touch.slot);
+  }
+});
+parkingMapEl.addEventListener('pointercancel',()=>{mapTouchStart=null;});
+parkingMapEl.addEventListener('click',e=>{
+  if(Date.now()<suppressMapClickUntil) return;
+  const slot=e.target.closest('[data-slot]');
+  if(slot) selectParkingSlot(slot);
 });
 
 function getRelevantReservations(){
@@ -901,11 +1020,15 @@ function renderCar(){
         : '<button class="btn primary" id="returnCarAction">반납 등록</button>'}
     </div>
   `;
-  document.getElementById(available?'useCarAction':'returnCarAction').addEventListener('click',()=>{
-    if(available) openUseModal();
-    else startReturnMode();
-  });
 }
+
+document.getElementById('carCard').addEventListener('click',e=>{
+  if(e.target.closest('#useCarAction')){
+    openUseModal();
+    return;
+  }
+  if(e.target.closest('#returnCarAction')) startReturnMode();
+});
 
 function renderHistory(){
   const list=document.getElementById('historyList');
@@ -1014,6 +1137,10 @@ function renderAll(){
   renderTripLogs();
   document.getElementById('modeBanner').classList.toggle('show',returnMode);
   document.getElementById('returnPanel').hidden=!returnMode;
+  document.body.classList.toggle('return-mode-active',returnMode);
+  const dockText=document.getElementById('mapReturnDockText');
+  if(dockText) dockText.textContent=selectedReturnSlot?`선택 위치: ${selectedReturnSlot}`:'반납 위치를 선택해 주세요.';
+  applyMapScale(mapScale,false);
 }
 
 function openUseModal(){
@@ -1059,7 +1186,15 @@ function startReturnMode(){
   document.getElementById('returnName').value=state.car.currentUser||'';
   document.getElementById('selectedSlotText').textContent='선택되지 않음';
   renderAll();
-  setTimeout(()=>document.getElementById('returnName').focus(),50);
+  if(isMobileView()){
+    if(mapScale<1) setMapScale(1);
+    setTimeout(()=>{
+      document.getElementById('parkingPanel').scrollIntoView({behavior:'smooth',block:'start'});
+      toast('배치도에서 반납 위치를 선택해 주세요.');
+    },80);
+  }else{
+    setTimeout(()=>document.getElementById('returnName').focus(),50);
+  }
 }
 
 document.getElementById('cancelReturnBtn').addEventListener('click',()=>{
@@ -1067,6 +1202,7 @@ document.getElementById('cancelReturnBtn').addEventListener('click',()=>{
   selectedReturnSlot='';
   resetPhotoInput();
   renderAll();
+  scheduleDeferredFirebaseRefresh();
 });
 
 async function handlePhotoSelection(e){
@@ -1226,6 +1362,7 @@ document.getElementById('saveTripLogBtn').addEventListener('click',async()=>{
   completeButton.disabled=false;
   saveButton.disabled=false;
   renderAll();
+  scheduleDeferredFirebaseRefresh();
   toast(`${values.name}님 운행일지와 반납 등록이 완료되었습니다.`);
 });
 
@@ -1319,8 +1456,88 @@ function hideModal(id){
   const modal=document.getElementById(id);
   modal.classList.remove('show');
   modal.setAttribute('aria-hidden','true');
-  if(lastFocusedElement?.isConnected) lastFocusedElement.focus();
+  if(lastFocusedElement?.isConnected && !isMobileView()){
+    try{ lastFocusedElement.focus({preventScroll:true}); }catch(_){ lastFocusedElement.focus(); }
+  }
+  scheduleDeferredFirebaseRefresh();
 }
+
+function isMobileView(){
+  return window.matchMedia('(max-width:720px)').matches;
+}
+
+function applyMapScale(scale,preserveCenter=true){
+  const viewport=document.getElementById('mapViewport');
+  const stage=document.getElementById('mapStage');
+  const map=document.getElementById('parkingMap');
+  if(!viewport||!stage||!map) return;
+
+  const previous=parseFloat(map.dataset.scale||'1')||1;
+  const centerX=viewport.scrollLeft+viewport.clientWidth/2;
+  const centerY=viewport.scrollTop+viewport.clientHeight/2;
+  const contentX=centerX/previous;
+  const contentY=centerY/previous;
+
+  map.dataset.scale=String(scale);
+  map.style.transform=`scale(${scale})`;
+  stage.style.width=`${MAP_WIDTH*scale}px`;
+  stage.style.height=`${MAP_HEIGHT*scale}px`;
+  const reset=document.getElementById('mapZoomResetBtn');
+  if(reset) reset.textContent=`${Math.round(scale*100)}%`;
+
+  if(preserveCenter){
+    requestAnimationFrame(()=>{
+      viewport.scrollLeft=Math.max(0,contentX*scale-viewport.clientWidth/2);
+      viewport.scrollTop=Math.max(0,contentY*scale-viewport.clientHeight/2);
+    });
+  }
+}
+
+function setMapScale(next){
+  mapScale=Math.min(1.5,Math.max(0.7,Math.round(next*20)/20));
+  applyMapScale(mapScale,true);
+}
+
+function jumpMapTo(x,y){
+  const viewport=document.getElementById('mapViewport');
+  if(!viewport) return;
+  viewport.scrollTo({
+    left:Math.max(0,x*mapScale-18),
+    top:Math.max(0,y*mapScale-18),
+    behavior:'smooth'
+  });
+}
+
+const MAP_JUMP_POINTS={
+  top:[120,0],abc:[170,95],def:[170,515],ghi:[170,930],left:[0,430],bottom:[40,1305]
+};
+
+document.getElementById('mapZoomOutBtn').addEventListener('click',()=>setMapScale(mapScale-0.15));
+document.getElementById('mapZoomInBtn').addEventListener('click',()=>setMapScale(mapScale+0.15));
+document.getElementById('mapZoomResetBtn').addEventListener('click',()=>setMapScale(1));
+document.getElementById('mapJumpSelect').addEventListener('change',e=>{
+  const point=MAP_JUMP_POINTS[e.target.value];
+  if(point) jumpMapTo(point[0],point[1]);
+  e.target.value='';
+});
+document.getElementById('returnInputJumpBtn').addEventListener('click',()=>{
+  document.getElementById('returnPanel').scrollIntoView({behavior:'smooth',block:'start'});
+});
+
+// 모바일 터치 중 Firebase 실시간 렌더링이 DOM을 교체해 버튼/주차면 탭이 유실되는 것을 방지
+document.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='touch') activeTouchPointers.add(e.pointerId);
+},{capture:true,passive:true});
+function finishTouchPointer(e){
+  if(e.pointerType!=='touch') return;
+  // pointerup 직후 합성 click이 발생할 때까지 DOM 교체를 잠시 막아 모바일 탭 유실 방지
+  setTimeout(()=>{
+    activeTouchPointers.delete(e.pointerId);
+    scheduleDeferredFirebaseRefresh();
+  },350);
+}
+document.addEventListener('pointerup',finishTouchPointer,{capture:true,passive:true});
+document.addEventListener('pointercancel',finishTouchPointer,{capture:true,passive:true});
 
 function nowText(){
   const d=new Date(),p=n=>String(n).padStart(2,'0');
