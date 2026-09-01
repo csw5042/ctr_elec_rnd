@@ -624,6 +624,210 @@ body::before{
   .summary-chips span:last-child{display:none}
   .info-grid{grid-template-columns:1fr}
 }
+/* ===== Mobile UX v3 ===== */
+.map-zone-strip,.mobile-quick-nav{display:none}
+
+@media(max-width:720px){
+  html{scroll-padding-top:68px}
+  body{
+    padding-bottom:calc(78px + env(safe-area-inset-bottom));
+    overflow-x:hidden;
+    -webkit-text-size-adjust:100%;
+  }
+  body.return-mode-active{
+    padding-bottom:calc(84px + env(safe-area-inset-bottom));
+  }
+
+  /* 모바일에서는 핵심 작업 순서대로 카드 재배치 */
+  .layout{display:flex;flex-direction:column;padding:10px 10px 18px;gap:10px}
+  .side{display:contents}
+  #carPanel{order:1}
+  #reservationPanel{order:2}
+  #parkingPanel{order:3}
+  #returnPanel{order:4}
+  #tripLogPanel{order:5}
+  #historyPanel{order:6}
+
+  /* 상단은 한 줄로 유지하고 세로 공간 최소화 */
+  .topbar{
+    min-height:58px;padding:8px 10px;
+    padding-top:max(8px,env(safe-area-inset-top));
+    box-shadow:0 5px 20px rgba(16,24,40,.08);
+  }
+  .logo{width:36px;height:36px;border-radius:11px}
+  .workspace-kicker{display:none}
+  .brand h1{font-size:14px}
+  .sync-status{width:34px;height:34px;min-height:34px}
+  #printLogBtn{width:36px;height:34px;min-height:34px}
+
+  /* 대시보드 소개는 모바일에서 한 줄 요약 */
+  .workspace-summary{margin-top:9px;padding:0 10px}
+  .summary-copy .summary-eyebrow,.summary-copy>span:last-child,.summary-chips{display:none!important}
+  .summary-copy strong{font-size:17px;line-height:1.2;padding:2px 1px}
+
+  .panel{border-radius:16px}
+  .panel-head{padding:13px 14px 11px;gap:8px}
+  .panel-head h2{font-size:14px}
+  .panel-head .sub{font-size:10px;line-height:1.45}
+  #reservationPanel .panel-head{align-items:center}
+  #reservationPanel #openReservationBtn{min-height:42px;padding:8px 11px;white-space:nowrap}
+
+  .car-card,.return-panel{padding:14px}
+  .car-name{font-size:19px}
+  .status{padding:6px 9px}
+  .info-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .info-box{padding:9px;border-radius:10px}
+  .info-box .label{font-size:10px}
+  .info-box .value{font-size:12px;margin-top:4px}
+  .action-row{gap:8px;margin-top:12px}
+  .action-row .btn,.return-panel .btn{min-height:48px}
+
+  /* iOS 입력 시 자동 확대 방지 + 엄지 터치 크기 */
+  .field{gap:6px;margin-bottom:11px}
+  .field label{font-size:12px}
+  .field input,.field select,.field textarea{
+    min-height:50px;font-size:16px!important;border-radius:12px;padding:11px 12px;
+  }
+  .field textarea{min-height:96px}
+  .selected-slot{min-height:52px;display:grid;place-items:center;font-size:17px;border-radius:12px}
+  .return-help{font-size:11px;padding:10px 11px;margin-bottom:12px}
+
+  /* 지도 조작부: 확대 버튼과 구역 이동을 분리 */
+  .map-mobile-tools{
+    position:sticky;top:58px;z-index:42;
+    grid-template-columns:48px 66px 48px 1fr;gap:7px;
+    padding:8px 10px;background:rgba(255,255,255,.97);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  }
+  .map-mobile-tools .btn{min-height:46px;font-size:16px;font-weight:900}
+  .map-mobile-tools select{display:none}
+  .map-mobile-tools::after{
+    content:"손가락으로 이동 · 주차면을 탭하여 선택";
+    grid-column:4;font-size:10px;color:var(--muted);display:flex;align-items:center;justify-content:flex-end;text-align:right;line-height:1.25;
+  }
+  .map-zone-strip{
+    display:flex;gap:7px;overflow-x:auto;padding:8px 10px 9px;
+    border-bottom:1px solid #eceef1;background:#fff;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  }
+  .map-zone-strip::-webkit-scrollbar{display:none}
+  .map-zone-strip button{
+    flex:0 0 auto;min-height:38px;padding:0 13px;border:1px solid #e0e3e7;
+    border-radius:999px;background:#fff;color:#565c65;font:800 11px/1 inherit;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  }
+  .map-zone-strip button:active,.map-zone-strip button.active{
+    background:var(--primary-soft);border-color:#efb3ad;color:#ad251b;
+  }
+  .map-scroll{
+    height:clamp(390px,57dvh,570px);padding:12px;
+    scroll-snap-type:none;scrollbar-width:thin;
+    border-radius:0;background-color:#f8f9fa;
+  }
+  .map-stage{margin:0}
+  .parking-map{transform-origin:top left!important}
+  .slot{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  body.return-mode-active .slot.return-pickable{box-shadow:inset 0 0 0 1px rgba(217,45,32,.12)}
+  body.return-mode-active .slot.return-selected{box-shadow:0 0 0 3px rgba(217,45,32,.18),inset 0 0 0 1px #d92d20!important}
+  .legend{padding:10px 13px 12px;gap:8px;font-size:9.5px}
+
+  /* 사진 입력 */
+  .photo-box{min-height:150px;border-radius:13px}
+  .photo-box img{height:min(45dvh,300px)}
+  .photo-actions{grid-template-columns:1fr 1fr;gap:8px}
+  .photo-action{min-height:50px;font-size:12px}
+
+  /* 하단 시트 모달 */
+  .modal-bg{align-items:flex-end;padding:0}
+  .modal,.modal.wide{
+    width:100%;max-height:calc(100dvh - max(8px,env(safe-area-inset-top)));
+    border-radius:20px 20px 0 0;
+  }
+  .modal::before{
+    content:"";display:block;width:38px;height:4px;margin:7px auto 0;border-radius:999px;background:#d8dadd;
+  }
+  .modal-head{padding:11px 14px 12px}
+  .modal-close{width:44px;height:44px;flex:none}
+  .modal-body{padding:14px;overscroll-behavior:contain}
+  .modal-actions{
+    gap:8px;padding:10px 14px max(10px,env(safe-area-inset-bottom));
+    box-shadow:0 -8px 24px rgba(16,24,40,.06);
+  }
+  .modal-actions .btn{min-height:50px;font-size:13px}
+  #tripLogModal .modal-actions #saveTripLogBtn{flex:1.7}
+  .form-note{font-size:10.5px;line-height:1.5;padding:9px 10px}
+  .management-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .management-grid .field:last-child{grid-column:1/-1}
+
+  /* 긴 목록은 화면 전체 길이를 잠식하지 않게 자체 스크롤 */
+  .reservation-list{max-height:285px;overscroll-behavior:contain}
+  .history-list{max-height:360px;overscroll-behavior:contain}
+  .log-summary{max-height:350px;overflow:auto;overscroll-behavior:contain}
+  .reservation-item,.history-item,.log-item{padding-top:11px;padding-bottom:11px}
+  .reservation-name,.history-title{font-size:12.5px}
+  .history-time,.reservation-time,.history-meta,.log-meta{font-size:10.5px}
+  .log-main{font-size:12px}
+
+  /* 항상 닿는 엄지용 빠른 메뉴 */
+  .mobile-quick-nav{
+    display:grid;grid-template-columns:repeat(4,1fr);position:fixed;
+    left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));z-index:90;
+    min-height:58px;padding:5px;border:1px solid rgba(220,223,228,.92);
+    border-radius:18px;background:rgba(255,255,255,.94);
+    box-shadow:0 12px 34px rgba(16,24,40,.16);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  }
+  .mobile-quick-nav button{
+    border:0;background:transparent;border-radius:13px;color:#707680;
+    min-width:0;min-height:48px;padding:4px 2px;font:800 10px/1.15 inherit;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  }
+  .mobile-quick-nav button span{font-size:16px;line-height:1;color:#9aa0a8}
+  .mobile-quick-nav button:active,.mobile-quick-nav button.active{background:var(--primary-soft);color:#ad251b}
+  .mobile-quick-nav button.active span{color:var(--primary)}
+  body.return-mode-active .mobile-quick-nav{display:none}
+
+  body.return-mode-active .map-return-dock{
+    left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));
+    min-height:62px;padding:8px 9px;z-index:98;
+  }
+  .map-return-dock .dock-slot{font-size:12px}
+  .map-return-dock .btn{min-height:46px}
+
+  .toast{
+    left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));
+    width:auto;text-align:center;font-size:11px;line-height:1.4;
+  }
+  body.return-mode-active .toast{bottom:calc(78px + env(safe-area-inset-bottom))}
+}
+
+@media(max-width:420px){
+  .layout{padding-left:8px;padding-right:8px}
+  .info-grid{grid-template-columns:1fr 1fr}
+  .photo-actions{grid-template-columns:1fr}
+  .management-grid{grid-template-columns:1fr}
+  .management-grid .field:last-child{grid-column:auto}
+  .map-mobile-tools{grid-template-columns:46px 62px 46px 1fr;padding-left:8px;padding-right:8px}
+  .map-mobile-tools::after{font-size:9px}
+  .map-scroll{height:55dvh;min-height:360px;padding:10px}
+}
+
+@media(max-width:360px){
+  .brand h1{font-size:13px}
+  .logo{width:34px;height:34px}
+  .info-grid{grid-template-columns:1fr}
+  .map-mobile-tools::after{content:"이동 후 탭하여 선택"}
+}
+
+@media(orientation:landscape) and (max-height:520px) and (max-width:920px){
+  .topbar{position:static}
+  .workspace-summary{display:none}
+  .map-mobile-tools{top:0}
+  .map-scroll{height:70dvh;min-height:270px}
+  .modal,.modal.wide{max-height:100dvh}
+}
+
 @media print{
   body{background:#fff!important}
   body::before,.workspace-summary{display:none!important}
@@ -684,6 +888,14 @@ body::before{
         <option value="bottom">하단 경차</option>
       </select>
     </div>
+    <div class="map-zone-strip" id="mapZoneStrip" aria-label="주차장 구역 빠른 이동">
+      <button type="button" data-map-jump="top">상단</button>
+      <button type="button" data-map-jump="abc">A·B·C</button>
+      <button type="button" data-map-jump="def">D·E·F</button>
+      <button type="button" data-map-jump="ghi">G·H·I</button>
+      <button type="button" data-map-jump="left">좌측</button>
+      <button type="button" data-map-jump="bottom">하단 경차</button>
+    </div>
     <div class="map-scroll" id="mapViewport">
       <div class="map-stage" id="mapStage">
         <div class="parking-map" id="parkingMap" aria-label="주차면 배치도"></div>
@@ -698,7 +910,7 @@ body::before{
   </section>
 
   <aside class="side">
-    <section class="panel" aria-labelledby="carTitle">
+    <section class="panel" id="carPanel" aria-labelledby="carTitle">
       <div class="panel-head">
         <div>
           <h2 id="carTitle">회사차량</h2>
@@ -708,7 +920,7 @@ body::before{
       <div class="car-card" id="carCard"></div>
     </section>
 
-    <section class="panel" aria-labelledby="reservationTitle">
+    <section class="panel" id="reservationPanel" aria-labelledby="reservationTitle">
       <div class="panel-head">
         <div>
           <h2 id="reservationTitle">차량 예약</h2>
@@ -761,7 +973,7 @@ body::before{
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="tripLogTitle">
+    <section class="panel" id="tripLogPanel" aria-labelledby="tripLogTitle">
       <div class="panel-head">
         <div>
           <h2 id="tripLogTitle">최근 운행일지</h2>
@@ -772,7 +984,7 @@ body::before{
       <div class="log-summary" id="tripLogList"></div>
     </section>
 
-    <section class="panel" aria-labelledby="historyTitle">
+    <section class="panel" id="historyPanel" aria-labelledby="historyTitle">
       <div class="panel-head">
         <div>
           <h2 id="historyTitle">최근 사용 이력</h2>
@@ -884,6 +1096,13 @@ body::before{
     </div>
   </div>
 </div>
+
+<nav class="mobile-quick-nav" id="mobileQuickNav" aria-label="모바일 빠른 메뉴">
+  <button type="button" data-scroll-target="carPanel"><span aria-hidden="true">●</span>차량</button>
+  <button type="button" data-scroll-target="reservationPanel"><span aria-hidden="true">◷</span>예약</button>
+  <button type="button" data-scroll-target="parkingPanel"><span aria-hidden="true">▦</span>주차장</button>
+  <button type="button" data-scroll-target="tripLogPanel"><span aria-hidden="true">≡</span>기록</button>
+</nav>
 
 <div class="map-return-dock" id="mapReturnDock" aria-live="polite">
   <div class="dock-slot" id="mapReturnDockText">반납 위치를 선택해 주세요.</div>
@@ -1232,23 +1451,47 @@ function selectParkingSlot(slot){
 }
 
 const parkingMapEl=document.getElementById('parkingMap');
+
+function findTouchSlot(clientX,clientY,fallback=null){
+  const direct=document.elementFromPoint(clientX,clientY)?.closest?.('[data-slot]');
+  if(direct && parkingMapEl.contains(direct)) return direct;
+  if(fallback?.isConnected) return fallback;
+
+  // 모바일의 좁은 주차면은 가장자리 12px까지 탭 허용. 드래그와는 pointermove로 구분합니다.
+  let nearest=null;
+  let nearestDistance=Infinity;
+  parkingMapEl.querySelectorAll('[data-slot]').forEach(slot=>{
+    const r=slot.getBoundingClientRect();
+    const dx=Math.max(r.left-clientX,0,clientX-r.right);
+    const dy=Math.max(r.top-clientY,0,clientY-r.bottom);
+    const distance=Math.hypot(dx,dy);
+    if(distance<=12 && distance<nearestDistance){
+      nearest=slot;
+      nearestDistance=distance;
+    }
+  });
+  return nearest;
+}
+
 parkingMapEl.addEventListener('pointerdown',e=>{
   if(e.pointerType!=='touch') return;
   const slot=e.target.closest('[data-slot]');
-  if(!slot) return;
   mapTouchStart={pointerId:e.pointerId,x:e.clientX,y:e.clientY,slot,moved:false};
 });
 parkingMapEl.addEventListener('pointermove',e=>{
   if(!mapTouchStart || e.pointerId!==mapTouchStart.pointerId) return;
-  if(Math.hypot(e.clientX-mapTouchStart.x,e.clientY-mapTouchStart.y)>10) mapTouchStart.moved=true;
+  if(Math.hypot(e.clientX-mapTouchStart.x,e.clientY-mapTouchStart.y)>9) mapTouchStart.moved=true;
 });
 parkingMapEl.addEventListener('pointerup',e=>{
   if(!mapTouchStart || e.pointerId!==mapTouchStart.pointerId) return;
   const touch=mapTouchStart;
   mapTouchStart=null;
   if(!touch.moved){
-    suppressMapClickUntil=Date.now()+700;
-    selectParkingSlot(touch.slot);
+    const slot=findTouchSlot(e.clientX,e.clientY,touch.slot);
+    if(slot){
+      suppressMapClickUntil=Date.now()+700;
+      selectParkingSlot(slot);
+    }
   }
 });
 parkingMapEl.addEventListener('pointercancel',()=>{mapTouchStart=null;});
@@ -1835,6 +2078,42 @@ document.getElementById('mapJumpSelect').addEventListener('change',e=>{
   if(point) jumpMapTo(point[0],point[1]);
   e.target.value='';
 });
+
+document.querySelectorAll('[data-map-jump]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const key=btn.dataset.mapJump;
+    const point=MAP_JUMP_POINTS[key];
+    if(!point) return;
+    document.querySelectorAll('[data-map-jump]').forEach(item=>item.classList.toggle('active',item===btn));
+    jumpMapTo(point[0],point[1]);
+  });
+});
+
+function mobileScrollTo(targetId){
+  const target=document.getElementById(targetId);
+  if(!target) return;
+  target.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+document.querySelectorAll('[data-scroll-target]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const id=btn.dataset.scrollTarget;
+    document.querySelectorAll('[data-scroll-target]').forEach(item=>item.classList.toggle('active',item===btn));
+    mobileScrollTo(id);
+  });
+});
+
+if('IntersectionObserver' in window){
+  const quickButtons=[...document.querySelectorAll('[data-scroll-target]')];
+  const quickTargets=quickButtons.map(btn=>document.getElementById(btn.dataset.scrollTarget)).filter(Boolean);
+  const quickObserver=new IntersectionObserver(entries=>{
+    if(!isMobileView() || returnMode) return;
+    const visible=entries.filter(entry=>entry.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+    if(!visible) return;
+    quickButtons.forEach(btn=>btn.classList.toggle('active',btn.dataset.scrollTarget===visible.target.id));
+  },{rootMargin:'-20% 0px -55% 0px',threshold:[0.05,0.2,0.5]});
+  quickTargets.forEach(target=>quickObserver.observe(target));
+}
 document.getElementById('returnInputJumpBtn').addEventListener('click',()=>{
   document.getElementById('returnPanel').scrollIntoView({behavior:'smooth',block:'start'});
 });
@@ -2151,6 +2430,13 @@ async function showHistoryPhoto(key){
 
 renderAll();
 initializeFirebaseSync();
+window.addEventListener('resize',()=>{
+  if(!isMobileView()) return;
+  applyMapScale(mapScale,false);
+});
+window.addEventListener('orientationchange',()=>{
+  setTimeout(()=>applyMapScale(mapScale,false),180);
+});
 window.addEventListener('beforeunload',()=>firebaseUnsubscribe?.());
 </script>
 </body>
