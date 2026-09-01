@@ -64,6 +64,12 @@ button{cursor:pointer}
 }
 .btn:hover{background:#f7f9fc}
 .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.sync-status{display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border-radius:999px;border:1px solid #d8e0ec;background:#f7f9fc;color:var(--muted);font-size:12px;font-weight:900}
+.sync-status::before{content:"";width:8px;height:8px;border-radius:50%;background:#98a2b3}
+.sync-status.online{background:var(--good-soft);color:var(--good);border-color:#bfe8d2}
+.sync-status.online::before{background:var(--good)}
+.sync-status.offline{background:#fff4e5;color:#a15c00;border-color:#f4d39a}
+.sync-status.offline::before{background:#d97706}
 .layout{
   display:grid;grid-template-columns:minmax(760px,1fr) 390px;
   gap:18px;max-width:1580px;margin:0 auto;padding:18px;
@@ -313,6 +319,7 @@ button{cursor:pointer}
     </div>
   </div>
   <div class="header-actions">
+    <span class="sync-status" id="firebaseStatus" role="status" aria-live="polite">Firebase 연결 중</span>
     <button class="btn primary" id="printLogBtn">운행일지 출력</button>
   </div>
 </header>
@@ -529,7 +536,29 @@ button{cursor:pointer}
 
 <section class="print-sheet" id="printSheet" aria-label="차량 운행일지 인쇄 영역"></section>
 
+<!-- Firebase CDN SDK (GitHub Pages / 단일 HTML용) -->
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-storage-compat.js"></script>
 <script>
+// Firebase Web App configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAiK3SiSYV6uiHj7GgMtBAcAf7hmySSSAw",
+  authDomain: "ctr-elec-rnd.firebaseapp.com",
+  projectId: "ctr-elec-rnd",
+  storageBucket: "ctr-elec-rnd.firebasestorage.app",
+  messagingSenderId: "149264350401",
+  appId: "1:149264350401:web:23dd516f5726275e0aa840",
+  measurementId: "G-GGZ3ET3S20"
+};
+
+firebase.initializeApp(firebaseConfig);
+const firestore = firebase.firestore();
+const firebaseStorage = firebase.storage();
+const FIREBASE_STATE_DOC = firestore.collection('companyCar').doc('main');
+let firebaseReady = false;
+let firebaseUnsubscribe = null;
+
 const STORAGE_KEY = 'companyCarSingleProto_v1';
 const DB_NAME = 'CompanyCarSinglePhotoDB';
 const DB_STORE = 'photos';
@@ -613,31 +642,96 @@ function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
 function normalizeSlotId(value=''){
   return String(value).replace(/^([A-I]\d{2})-[LR]$/,'$1');
 }
+function normalizeLoadedState(saved){
+  return {
+    car:{
+      ...initialState.car,
+      ...(saved?.car||{}),
+      name:initialState.car.name,
+      plate:initialState.car.plate,
+      slot:normalizeSlotId(saved?.car?.slot||initialState.car.slot)
+    },
+    history:Array.isArray(saved?.history)?saved.history:[],
+    reservations:Array.isArray(saved?.reservations)?saved.reservations:[],
+    tripLogs:Array.isArray(saved?.tripLogs)?saved.tripLogs:clone(initialTripLogs)
+  };
+}
+
 function loadState(){
   try{
     const raw=localStorage.getItem(STORAGE_KEY);
     if(!raw) return clone(initialState);
-    const saved=JSON.parse(raw);
-    return {
-      car:{
-        ...initialState.car,
-        ...(saved.car||{}),
-        name:initialState.car.name,
-        plate:initialState.car.plate,
-        slot:normalizeSlotId(saved.car?.slot||initialState.car.slot)
-      },
-      history:Array.isArray(saved.history)?saved.history:[],
-      reservations:Array.isArray(saved.reservations)?saved.reservations:[],
-      tripLogs:Array.isArray(saved.tripLogs)?saved.tripLogs:clone(initialTripLogs)
-    };
+    return normalizeLoadedState(JSON.parse(raw));
   }catch(e){
-    console.warn('저장 데이터를 읽지 못해 초기값을 사용합니다.',e);
+    console.warn('로컬 저장 데이터를 읽지 못해 초기값을 사용합니다.',e);
     return clone(initialState);
   }
 }
-function saveState(){
+
+function saveLocalState(){
   try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); }
-  catch(e){ console.error(e); toast('브라우저 저장 공간이 부족합니다.'); }
+  catch(e){ console.error(e); toast('브라우저 로컬 백업 저장 공간이 부족합니다.'); }
+}
+
+function setFirebaseStatus(mode,text){
+  const el=document.getElementById('firebaseStatus');
+  if(!el) return;
+  el.classList.toggle('online',mode==='online');
+  el.classList.toggle('offline',mode==='offline');
+  el.textContent=text;
+}
+
+function saveState(){
+  // Firebase 장애 시에도 현재 PC에서 데이터가 사라지지 않도록 로컬 백업 유지
+  saveLocalState();
+  if(!firebaseReady) return;
+
+  FIREBASE_STATE_DOC.set({
+    state:clone(state),
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  },{merge:true}).catch(error=>{
+    console.error('Firebase 상태 저장 실패:',error);
+    setFirebaseStatus('offline','Firebase 저장 오류 · 로컬 백업');
+    toast('Firebase 저장에 실패하여 현재 PC에만 임시 저장했습니다.');
+  });
+}
+
+async function initializeFirebaseSync(){
+  setFirebaseStatus('','Firebase 연결 중');
+  try{
+    const snapshot=await FIREBASE_STATE_DOC.get();
+    if(snapshot.exists && snapshot.data()?.state){
+      state=normalizeLoadedState(snapshot.data().state);
+      saveLocalState();
+      renderAll();
+    }else{
+      await FIREBASE_STATE_DOC.set({
+        state:clone(state),
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      },{merge:true});
+    }
+
+    firebaseReady=true;
+    setFirebaseStatus('online','Firebase 연결됨');
+
+    firebaseUnsubscribe=FIREBASE_STATE_DOC.onSnapshot(snapshot=>{
+      if(!snapshot.exists || !snapshot.data()?.state) return;
+      state=normalizeLoadedState(snapshot.data().state);
+      saveLocalState();
+      renderAll();
+      setFirebaseStatus('online','Firebase 동기화됨');
+    },error=>{
+      console.error('Firebase 실시간 동기화 오류:',error);
+      firebaseReady=false;
+      setFirebaseStatus('offline','Firebase 연결 끊김 · 로컬 사용');
+    });
+  }catch(error){
+    console.error('Firebase 초기 연결 실패:',error);
+    firebaseReady=false;
+    setFirebaseStatus('offline','Firebase 연결 실패 · 로컬 사용');
+    toast('Firebase에 연결하지 못해 현재 PC의 로컬 데이터로 실행합니다.');
+  }
 }
 
 function createSlot(slotId,label,x,y,w,h,isSmall=false){
@@ -1308,7 +1402,8 @@ function openDB(){
   });
   return dbPromise;
 }
-async function savePhoto(key,file){
+
+async function savePhotoLocal(key,file){
   const db=await openDB();
   const tx=db.transaction(DB_STORE,'readwrite');
   tx.objectStore(DB_STORE).put({key,blob:file,name:file.name,type:file.type});
@@ -1317,7 +1412,8 @@ async function savePhoto(key,file){
     tx.onerror=()=>reject(tx.error);
   });
 }
-async function readPhoto(key){
+
+async function readPhotoLocal(key){
   const db=await openDB();
   const tx=db.transaction(DB_STORE,'readonly');
   const req=tx.objectStore(DB_STORE).get(key);
@@ -1326,6 +1422,43 @@ async function readPhoto(key){
     req.onerror=()=>reject(req.error);
   });
 }
+
+async function savePhoto(key,file){
+  let localSaved=false;
+  try{
+    await savePhotoLocal(key,file);
+    localSaved=true;
+  }catch(error){
+    console.warn('사진 로컬 백업 실패:',error);
+  }
+
+  try{
+    const ref=firebaseStorage.ref().child(`company-car/photos/${key}`);
+    await ref.put(file,{contentType:file.type||'image/jpeg'});
+    return {remote:true,local:localSaved};
+  }catch(error){
+    console.error('Firebase Storage 사진 저장 실패:',error);
+    if(localSaved){
+      toast('사진은 현재 PC에 저장되었습니다. Firebase Storage 설정을 확인해 주세요.');
+      return {remote:false,local:true};
+    }
+    throw error;
+  }
+}
+
+async function readPhoto(key){
+  try{
+    const ref=firebaseStorage.ref().child(`company-car/photos/${key}`);
+    const url=await ref.getDownloadURL();
+    const response=await fetch(url);
+    if(!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.blob();
+  }catch(error){
+    console.warn('Firebase 사진 조회 실패, 로컬 백업을 확인합니다:',error);
+    return await readPhotoLocal(key);
+  }
+}
+
 async function showHistoryPhoto(key){
   try{
     const blob=await readPhoto(key);
@@ -1342,6 +1475,8 @@ async function showHistoryPhoto(key){
 }
 
 renderAll();
+initializeFirebaseSync();
+window.addEventListener('beforeunload',()=>firebaseUnsubscribe?.());
 </script>
 </body>
 </html>
