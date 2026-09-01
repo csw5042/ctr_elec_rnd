@@ -1949,7 +1949,8 @@ function renderTripLogs(){
 function formatLogDate(value){
   const date=new Date(`${value}T00:00:00`);
   if(!Number.isFinite(date.getTime())) return value||'-';
-  return `${date.getMonth()+1}/${date.getDate()}(${['일','월','화','수','목','금','토'][date.getDay()]})`;
+  const weekday=['일','월','화','수','목','금','토'][date.getDay()];
+  return `${date.getFullYear()}년 ${date.getMonth()+1}월 ${date.getDate()}일 (${weekday})`;
 }
 
 function formatLogTime(value){
