@@ -1449,6 +1449,10 @@ function selectParkingSlot(slot){
     document.getElementById('selectedSlotText').textContent=slotId;
     document.getElementById('mapReturnDockText').textContent=`선택 위치: ${slotId}`;
     toast(`${slotId} 반납 위치를 선택했습니다.`);
+    // 반납 위치 선택 직후 반납 등록 영역으로 자동 이동
+    setTimeout(()=>{
+      document.getElementById('returnPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
+    },100);
     return;
   }
   toast(state.car.status==='available' && state.car.slot===slotId
@@ -1748,15 +1752,12 @@ function startReturnMode(){
   document.getElementById('returnName').value=state.car.currentUser||'';
   document.getElementById('selectedSlotText').textContent='선택되지 않음';
   renderAll();
-  if(isMobileView()){
-    if(mapScale<1) setMapScale(1);
-    setTimeout(()=>{
-      document.getElementById('parkingPanel').scrollIntoView({behavior:'smooth',block:'start'});
-      toast('배치도에서 반납 위치를 선택해 주세요.');
-    },80);
-  }else{
-    setTimeout(()=>document.getElementById('returnName').focus(),50);
-  }
+  // 차량 반납 버튼 선택 시 화면 크기와 관계없이 주차장 배치도로 자동 이동
+  if(isMobileView() && mapScale<1) setMapScale(1);
+  setTimeout(()=>{
+    document.getElementById('parkingPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
+    toast('배치도에서 반납 위치를 선택해 주세요.');
+  },80);
 }
 
 document.getElementById('cancelReturnBtn').addEventListener('click',()=>{
