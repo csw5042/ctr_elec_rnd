@@ -858,6 +858,93 @@ body::before{
   .history-delete{min-height:38px;padding:7px 10px}
 }
 
+
+
+/* ===== 2026-09-01 모바일 상단 로그인 UI 컴팩트화 ===== */
+@media(max-width:720px){
+  /* 로그인 후에도 상단을 한 줄로 유지해 세로 공간을 최소화 */
+  .topbar{
+    min-height:48px!important;
+    padding:6px 8px!important;
+    padding-top:max(6px,env(safe-area-inset-top))!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    gap:6px!important;
+  }
+  .brand{flex:1 1 auto!important;min-width:0!important;gap:7px!important}
+  .logo{width:30px!important;height:30px!important;border-radius:9px!important;font-size:7px!important}
+  .brand h1{font-size:12.5px!important;line-height:1.2!important}
+
+  .header-actions{
+    flex:0 0 auto!important;
+    width:auto!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:3px!important;
+  }
+  .auth-actions{
+    width:auto!important;
+    display:flex!important;
+    grid-template-columns:none!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    gap:3px!important;
+  }
+  .auth-user-badge{
+    grid-column:auto!important;
+    min-height:30px!important;
+    max-width:64px!important;
+    padding:4px 6px!important;
+    gap:5px!important;
+    border-radius:9px!important;
+    font-size:9.5px!important;
+    line-height:1!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  .auth-user-badge::before{width:5px!important;height:5px!important;box-shadow:0 0 0 2px rgba(207,46,36,.09)!important;flex:none!important}
+
+  .header-actions>.sync-status{
+    width:30px!important;height:30px!important;min-height:30px!important;
+    padding:0!important;border-radius:9px!important;justify-content:center!important;
+    font-size:0!important;flex:none!important;
+  }
+  .sync-status::before{width:6px!important;height:6px!important}
+
+  #loginBtn{
+    min-height:30px!important;height:30px!important;
+    padding:0 8px!important;border-radius:9px!important;font-size:10px!important;
+  }
+  #changePasswordBtn,#logoutBtn{
+    width:30px!important;height:30px!important;min-height:30px!important;
+    padding:0!important;border-radius:9px!important;font-size:0!important;
+    display:grid;place-items:center;flex:none!important;
+  }
+  #changePasswordBtn::before{content:"PW";font-size:8.5px;font-weight:950;letter-spacing:-.02em;color:#555b63}
+  #logoutBtn::before{content:"↪";font-size:16px;font-weight:900;line-height:1;color:#555b63}
+
+  .header-actions>#printLogBtn{
+    width:30px!important;height:30px!important;min-height:30px!important;
+    padding:0!important;border-radius:9px!important;flex:none!important;
+  }
+  #printLogBtn .btn-mark{width:16px!important;height:16px!important;margin:0!important;font-size:10px!important}
+
+  /* 축소된 헤더 높이에 맞춰 고정 도구와 스크롤 보정 */
+  html{scroll-padding-top:54px!important}
+  .map-mobile-tools{top:48px!important}
+}
+
+@media(max-width:420px){
+  /* 작은 휴대폰에서는 로고를 숨겨 로그인 도구 공간 확보 */
+  .topbar .logo{display:none!important}
+  .brand{gap:0!important}
+  .brand h1{font-size:12px!important}
+  .auth-user-badge{max-width:56px!important}
+}
+
 </style>
 </head>
 <body>
@@ -875,8 +962,8 @@ body::before{
     <div class="auth-actions" aria-label="사용자 로그인">
       <span class="auth-user-badge" id="authUserBadge" hidden></span>
       <button class="btn" type="button" id="loginBtn">로그인</button>
-      <button class="btn" type="button" id="changePasswordBtn" hidden>비밀번호 변경</button>
-      <button class="btn" type="button" id="logoutBtn" hidden>로그아웃</button>
+      <button class="btn" type="button" id="changePasswordBtn" aria-label="비밀번호 변경" title="비밀번호 변경" hidden>비밀번호 변경</button>
+      <button class="btn" type="button" id="logoutBtn" aria-label="로그아웃" title="로그아웃" hidden>로그아웃</button>
     </div>
     <button class="btn primary" id="printLogBtn"><span class="btn-mark" aria-hidden="true">↗</span>운행일지 출력</button>
   </div>
@@ -1415,6 +1502,7 @@ function renderAuthControls(){
     badge.hidden=!loggedIn;
     badge.classList.toggle('admin',currentSession?.role==='admin');
     badge.textContent=loggedIn?(currentSession.role==='admin'?'관리자':`${currentSession.name} · ${currentSession.employeeNo}`):'';
+    badge.title=badge.textContent;
   }
   if(loginBtn) loginBtn.hidden=loggedIn;
   if(changeBtn) changeBtn.hidden=!loggedIn;
