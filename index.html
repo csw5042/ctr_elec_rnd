@@ -1317,6 +1317,7 @@ body::before{
 
 <section class="print-sheet" id="printSheet" aria-label="차량 운행일지 인쇄 영역"></section>
 
+<!-- DB SAVE FIX V2: 2026-09-01 / 구버전 state 필드 호환 Rules + 상세 오류코드 표시 -->
 <!-- Firebase CDN SDK (GitHub Pages / 단일 HTML용) -->
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -1360,6 +1361,7 @@ let currentSession=null;
 let passwordChangeRequired=false;
 let authInitialized=false;
 let firebaseReady = false;
+let lastDbSaveError = null;
 let firebaseUnsubscribe = null;
 let firebaseWritePromise = Promise.resolve();
 let deferredFirebaseRefresh = false;
@@ -1655,27 +1657,50 @@ function scheduleDeferredFirebaseRefresh(){
   },350);
 }
 
-function saveState(){
+function getDbSaveErrorMessage(error){
+  const code=String(error?.code||'unknown');
+  if(code.includes('permission-denied')){
+    return {code:'permission-denied',message:'DB 저장 권한 오류(permission-denied)입니다. Firestore Rules가 최신 버전으로 게시되었는지 확인해 주세요.'};
+  }
+  if(code.includes('unavailable')){
+    return {code:'unavailable',message:'DB 서버에 연결할 수 없습니다(unavailable). 네트워크 연결을 확인해 주세요.'};
+  }
+  if(code.includes('unauthenticated')){
+    return {code:'unauthenticated',message:'DB 인증 정보가 만료되었습니다(unauthenticated). 로그아웃 후 다시 로그인해 주세요.'};
+  }
+  if(code.includes('resource-exhausted')){
+    return {code:'resource-exhausted',message:'DB 사용량 또는 할당량 제한(resource-exhausted)이 발생했습니다.'};
+  }
+  return {code:code||'unknown',message:`DB 저장 오류(${code||'unknown'})가 발생했습니다. 브라우저 개발자 콘솔의 오류 내용을 확인해 주세요.`};
+}
+
+function saveState(options={}){
   // DB 장애 시에도 복구를 위해 현재 PC에 로컬 백업을 유지합니다.
+  const silent=options?.silent===true;
   saveLocalState();
-  if(!firebaseReady) return Promise.resolve(false);
+  lastDbSaveError=null;
+  if(!firebaseReady){
+    lastDbSaveError={code:'db-not-ready',message:'DB 연결이 준비되지 않았습니다. 상단 DB 상태를 확인해 주세요.'};
+    if(!silent) toast(lastDbSaveError.message);
+    return Promise.resolve(false);
+  }
 
   firebaseWritePromise=FIREBASE_STATE_DOC.set({
     state:clone(state),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
   },{merge:true}).then(()=>{
+    lastDbSaveError=null;
     setFirebaseStatus('online','DB 동기화됨');
     return true;
   }).catch(error=>{
     console.error('DB 상태 저장 실패:',error);
-    const code=String(error?.code||'');
-    if(code.includes('permission-denied')){
+    lastDbSaveError=getDbSaveErrorMessage(error);
+    if(lastDbSaveError.code==='permission-denied'){
       setFirebaseStatus('offline','DB 저장 권한 오류');
-      toast('DB 저장 권한이 없습니다. Firestore Rules를 확인해 주세요.');
     }else{
       setFirebaseStatus('offline','DB 저장 오류 · 로컬 백업');
-      toast('DB 저장에 실패했습니다. 네트워크 연결을 확인해 주세요.');
     }
+    if(!silent) toast(lastDbSaveError.message);
     return false;
   });
   return firebaseWritePromise;
@@ -2227,13 +2252,14 @@ document.getElementById('startUseBtn').addEventListener('click',async()=>{
     fromSlot:oldSlot
   });
 
-  const synced=await saveState();
+  const synced=await saveState({silent:true});
   if(!synced){
+    const failure={...(lastDbSaveError||{code:'unknown',message:'DB 저장 오류가 발생했습니다.'})};
     state=normalizeLoadedState(previousState);
     saveLocalState();
-    renderAll();
     button.disabled=false;
-    toast('차량 사용 등록을 취소했습니다. DB 저장 설정을 확인해 주세요.');
+    renderAll();
+    toast(`차량 사용 등록을 취소했습니다. ${failure.message}`);
     return;
   }
 
