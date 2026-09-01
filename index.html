@@ -1353,7 +1353,7 @@ let returnPhotoFile = null;
 let returnPreviewUrl = '';
 let lastFocusedElement = null;
 let dbPromise = null;
-let mapScale = 1;
+let mapScale = window.matchMedia('(max-width:720px)').matches ? 0.7 : 1; // 모바일 기본 70%, PC 기본 100%
 let mapTouchStart = null;
 let suppressMapClickUntil = 0;
 const MAP_WIDTH = 1040;
@@ -2588,7 +2588,7 @@ const MAP_JUMP_POINTS={
 
 document.getElementById('mapZoomOutBtn').addEventListener('click',()=>setMapScale(mapScale-0.15));
 document.getElementById('mapZoomInBtn').addEventListener('click',()=>setMapScale(mapScale+0.15));
-document.getElementById('mapZoomResetBtn').addEventListener('click',()=>setMapScale(1));
+document.getElementById('mapZoomResetBtn').addEventListener('click',()=>setMapScale(isMobileView()?0.7:1));
 document.getElementById('mapJumpSelect').addEventListener('change',e=>{
   const point=MAP_JUMP_POINTS[e.target.value];
   if(point) jumpMapTo(point[0],point[1]);
