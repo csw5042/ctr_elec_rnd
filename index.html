@@ -1660,7 +1660,7 @@ function scheduleDeferredFirebaseRefresh(){
 function getDbSaveErrorMessage(error){
   const code=String(error?.code||'unknown');
   if(code.includes('permission-denied')){
-    return {code:'permission-denied',message:'DB 저장 권한 오류(permission-denied)입니다. Firestore Rules가 최신 버전으로 게시되었는지 확인해 주세요.'};
+    return {code:'permission-denied',message:'DB 저장 권한 오류(permission-denied)입니다. Firestore Rules V3 적용 여부와 로그인 프로필 권한을 확인해 주세요.'};
   }
   if(code.includes('unavailable')){
     return {code:'unavailable',message:'DB 서버에 연결할 수 없습니다(unavailable). 네트워크 연결을 확인해 주세요.'};
@@ -1692,8 +1692,22 @@ function saveState(options={}){
     lastDbSaveError=null;
     setFirebaseStatus('online','DB 동기화됨');
     return true;
-  }).catch(error=>{
+  }).catch(async error=>{
     console.error('DB 상태 저장 실패:',error);
+    try{
+      const tokenInfo=await auth.currentUser?.getIdTokenResult?.();
+      console.error('DB 권한 진단 정보:',{
+        email:auth.currentUser?.email||'',
+        uid:auth.currentUser?.uid||'',
+        tokenEmail:tokenInfo?.claims?.email||'',
+        sessionRole:currentSession?.role||'',
+        sessionEmployeeNo:currentSession?.employeeNo||'',
+        carStatus:state?.car?.status||'',
+        selectedUseSlot:selectedUseSlot||''
+      });
+    }catch(diagError){
+      console.warn('DB 권한 진단 정보 확인 실패:',diagError);
+    }
     lastDbSaveError=getDbSaveErrorMessage(error);
     if(lastDbSaveError.code==='permission-denied'){
       setFirebaseStatus('offline','DB 저장 권한 오류');
