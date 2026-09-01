@@ -539,7 +539,6 @@ button{cursor:pointer}
 <!-- Firebase CDN SDK (GitHub Pages / 단일 HTML용) -->
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-storage-compat.js"></script>
 <script>
 // Firebase Web App configuration
 const firebaseConfig = {
@@ -554,8 +553,8 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const firestore = firebase.firestore();
-const firebaseStorage = firebase.storage();
 const FIREBASE_STATE_DOC = firestore.collection('companyCar').doc('main');
+const FIREBASE_PHOTO_COLLECTION = firestore.collection('returnPhotos');
 let firebaseReady = false;
 let firebaseUnsubscribe = null;
 
@@ -563,7 +562,12 @@ const STORAGE_KEY = 'companyCarSingleProto_v1';
 const DB_NAME = 'CompanyCarSinglePhotoDB';
 const DB_STORE = 'photos';
 const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
-const MAX_PHOTO_EDGE = 1600;
+// Firestore 문서 최대 크기(1MiB)보다 충분히 작게 유지하기 위한 사진 목표 크기
+const FIRESTORE_PHOTO_TARGET_BYTES = 700 * 1024;
+const MAX_PHOTO_EDGE = 1200;
+const MIN_PHOTO_EDGE = 640;
+const PHOTO_START_QUALITY = 0.72;
+const PHOTO_MIN_QUALITY = 0.42;
 
 /*
   사진 기준 배치
@@ -1368,19 +1372,74 @@ function resetPhotoInput(){
 }
 
 async function optimizePhoto(file){
-  if(!('createImageBitmap' in window)) return file;
-  const bitmap=await createImageBitmap(file);
-  const ratio=Math.min(1,MAX_PHOTO_EDGE/Math.max(bitmap.width,bitmap.height));
-  if(ratio===1 && file.size<1_500_000){ bitmap.close(); return file; }
-  const canvas=document.createElement('canvas');
-  canvas.width=Math.round(bitmap.width*ratio);
-  canvas.height=Math.round(bitmap.height*ratio);
-  canvas.getContext('2d',{alpha:false}).drawImage(bitmap,0,0,canvas.width,canvas.height);
-  bitmap.close();
-  const blob=await new Promise((resolve,reject)=>{
-    canvas.toBlob(result=>result?resolve(result):reject(new Error('사진 압축 실패')),'image/jpeg',.82);
+  const image=await loadImageForCanvas(file);
+  try{
+    let maxEdge=MAX_PHOTO_EDGE;
+    let quality=PHOTO_START_QUALITY;
+    let lastBlob=null;
+
+    // 품질을 먼저 낮추고, 그래도 큰 경우 해상도를 단계적으로 축소합니다.
+    for(let attempt=0;attempt<12;attempt++){
+      const ratio=Math.min(1,maxEdge/Math.max(image.width,image.height));
+      const width=Math.max(1,Math.round(image.width*ratio));
+      const height=Math.max(1,Math.round(image.height*ratio));
+      const canvas=document.createElement('canvas');
+      canvas.width=width;
+      canvas.height=height;
+      const ctx=canvas.getContext('2d',{alpha:false});
+      ctx.fillStyle='#fff';
+      ctx.fillRect(0,0,width,height);
+      ctx.drawImage(image.source,0,0,width,height);
+
+      const blob=await new Promise((resolve,reject)=>{
+        canvas.toBlob(result=>result?resolve(result):reject(new Error('사진 압축 실패')),'image/jpeg',quality);
+      });
+      lastBlob=blob;
+
+      if(blob.size<=FIRESTORE_PHOTO_TARGET_BYTES){
+        return new File([blob],file.name.replace(/\.[^.]+$/,'.jpg'),{
+          type:'image/jpeg',
+          lastModified:file.lastModified
+        });
+      }
+
+      if(quality>PHOTO_MIN_QUALITY){
+        quality=Math.max(PHOTO_MIN_QUALITY,quality-0.08);
+      }else if(maxEdge>MIN_PHOTO_EDGE){
+        maxEdge=Math.max(MIN_PHOTO_EDGE,Math.round(maxEdge*0.82));
+        quality=PHOTO_START_QUALITY;
+      }else{
+        break;
+      }
+    }
+
+    if(lastBlob && lastBlob.size<=FIRESTORE_PHOTO_TARGET_BYTES){
+      return new File([lastBlob],file.name.replace(/\.[^.]+$/,'.jpg'),{
+        type:'image/jpeg',
+        lastModified:file.lastModified
+      });
+    }
+    throw new Error('Firestore 저장 크기 이하로 사진을 압축하지 못했습니다.');
+  }finally{
+    image.close?.();
+    if(image.objectUrl) URL.revokeObjectURL(image.objectUrl);
+  }
+}
+
+async function loadImageForCanvas(file){
+  if('createImageBitmap' in window){
+    const bitmap=await createImageBitmap(file);
+    return {source:bitmap,width:bitmap.width,height:bitmap.height,close:()=>bitmap.close()};
+  }
+
+  const objectUrl=URL.createObjectURL(file);
+  const img=new Image();
+  await new Promise((resolve,reject)=>{
+    img.onload=resolve;
+    img.onerror=()=>reject(new Error('사진을 읽지 못했습니다.'));
+    img.src=objectUrl;
   });
-  return new File([blob],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg',lastModified:file.lastModified});
+  return {source:img,width:img.naturalWidth,height:img.naturalHeight,objectUrl};
 }
 
 function openDB(){
@@ -1423,7 +1482,17 @@ async function readPhotoLocal(key){
   });
 }
 
+async function fileToFirestoreBlob(file){
+  const buffer=await file.arrayBuffer();
+  return firebase.firestore.Blob.fromUint8Array(new Uint8Array(buffer));
+}
+
 async function savePhoto(key,file){
+  if(!file) throw new Error('저장할 사진이 없습니다.');
+  if(file.size>FIRESTORE_PHOTO_TARGET_BYTES){
+    throw new Error(`압축된 사진이 ${(FIRESTORE_PHOTO_TARGET_BYTES/1024).toFixed(0)}KB를 초과했습니다.`);
+  }
+
   let localSaved=false;
   try{
     await savePhotoLocal(key,file);
@@ -1432,14 +1501,29 @@ async function savePhoto(key,file){
     console.warn('사진 로컬 백업 실패:',error);
   }
 
+  if(!firebaseReady){
+    if(localSaved){
+      toast('Firebase 연결이 없어 사진은 현재 PC에만 임시 저장되었습니다.');
+      return {remote:false,local:true};
+    }
+    throw new Error('Firebase 연결 및 로컬 사진 저장을 모두 사용할 수 없습니다.');
+  }
+
   try{
-    const ref=firebaseStorage.ref().child(`company-car/photos/${key}`);
-    await ref.put(file,{contentType:file.type||'image/jpeg'});
+    const firestoreBlob=await fileToFirestoreBlob(file);
+    await FIREBASE_PHOTO_COLLECTION.doc(key).set({
+      imageData:firestoreBlob,
+      fileName:file.name||`${key}.jpg`,
+      contentType:file.type||'image/jpeg',
+      size:file.size,
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
     return {remote:true,local:localSaved};
   }catch(error){
-    console.error('Firebase Storage 사진 저장 실패:',error);
+    console.error('Firestore 사진 저장 실패:',error);
     if(localSaved){
-      toast('사진은 현재 PC에 저장되었습니다. Firebase Storage 설정을 확인해 주세요.');
+      toast('사진은 현재 PC에 저장되었습니다. Firestore 사진 저장을 확인해 주세요.');
       return {remote:false,local:true};
     }
     throw error;
@@ -1447,16 +1531,22 @@ async function savePhoto(key,file){
 }
 
 async function readPhoto(key){
-  try{
-    const ref=firebaseStorage.ref().child(`company-car/photos/${key}`);
-    const url=await ref.getDownloadURL();
-    const response=await fetch(url);
-    if(!response.ok) throw new Error(`HTTP ${response.status}`);
-    return await response.blob();
-  }catch(error){
-    console.warn('Firebase 사진 조회 실패, 로컬 백업을 확인합니다:',error);
-    return await readPhotoLocal(key);
+  if(firebaseReady){
+    try{
+      const snapshot=await FIREBASE_PHOTO_COLLECTION.doc(key).get();
+      if(snapshot.exists){
+        const data=snapshot.data()||{};
+        if(data.imageData){
+          const uint8=data.imageData.toUint8Array();
+          return new Blob([uint8],{type:data.contentType||'image/jpeg'});
+        }
+      }
+    }catch(error){
+      console.warn('Firestore 사진 조회 실패, 로컬 백업을 확인합니다:',error);
+    }
   }
+
+  return await readPhotoLocal(key);
 }
 
 async function showHistoryPhoto(key){
