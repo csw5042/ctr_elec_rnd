@@ -36,7 +36,7 @@ body{
   color:var(--text);
   min-height:100vh;
 }
-button,input{font:inherit;color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 [hidden]{display:none!important}
 .sr-only{
@@ -64,7 +64,6 @@ button{cursor:pointer}
 }
 .btn:hover{background:#f7f9fc}
 .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
-.btn.ghost-danger{color:#bd3434;border-color:#efc0c0}
 .layout{
   display:grid;grid-template-columns:minmax(760px,1fr) 390px;
   gap:18px;max-width:1580px;margin:0 auto;padding:18px;
@@ -156,6 +155,10 @@ button{cursor:pointer}
 .field input{
   border:1px solid #cfd7e3;border-radius:10px;padding:10px 11px;background:#fff;
 }
+.field select,.field textarea{
+  border:1px solid #cfd7e3;border-radius:10px;padding:10px 11px;background:#fff;
+}
+.field textarea{min-height:76px;resize:vertical}
 .selected-slot{
   padding:12px;border:1px solid #d7ccf4;background:#faf8ff;border-radius:10px;
   font-size:18px;font-weight:900;color:#5a32aa;text-align:center;
@@ -171,6 +174,13 @@ button{cursor:pointer}
 .photo-box.has .photo-prompt{display:none}
 .photo-prompt{text-align:center;color:var(--muted);font-size:12px;padding:15px}
 .photo-prompt strong{display:block;color:var(--text);font-size:14px;margin-bottom:5px}
+.photo-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.photo-action{
+  min-height:46px;border:1px solid #bfc9d8;border-radius:10px;background:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;cursor:pointer;
+}
+.photo-action.camera{background:var(--primary);border-color:var(--primary);color:#fff}
+.photo-action input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .history-list{max-height:440px;overflow:auto;padding:4px 18px 12px}
 .history-item{
   padding:12px 0;border-bottom:1px solid #edf0f4;
@@ -209,6 +219,22 @@ button{cursor:pointer}
 .modal{
   width:min(520px,100%);background:#fff;border-radius:16px;box-shadow:0 25px 70px rgba(0,0,0,.26);
 }
+.modal.wide{width:min(940px,100%);max-height:92vh;display:flex;flex-direction:column}
+.modal.wide .modal-body{overflow:auto}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
+.form-grid .span-2{grid-column:1/-1}
+.management-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.readonly-value{background:#f2f5f9!important;font-weight:900;color:#344054}
+.form-note{margin:-3px 0 14px;color:var(--muted);font-size:12px;line-height:1.5}
+.log-summary{padding:4px 18px 14px}
+.log-item{padding:11px 0;border-bottom:1px solid #edf0f4}
+.log-item:last-child{border-bottom:0}
+.log-main{display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:900}
+.log-meta{margin-top:4px;font-size:12px;line-height:1.5;color:var(--muted)}
+.odo-badge{white-space:nowrap;color:var(--primary)}
+.print-sheet{display:none}
+.print-page{break-after:page}
+.print-page:last-child{break-after:auto}
 .modal-head{
   padding:16px 18px;border-bottom:1px solid #e4e9f0;display:flex;justify-content:space-between;align-items:center;
 }
@@ -234,12 +260,42 @@ button{cursor:pointer}
 .mode-banner.show{display:block}
 @media(max-width:1180px){
   .layout{grid-template-columns:1fr}
+  .side{order:-1}
 }
 @media(max-width:720px){
-  .topbar{align-items:flex-start;flex-direction:column}
-  .layout{padding:10px}
+  .topbar{position:static;align-items:flex-start;flex-direction:column;padding:13px 12px}
+  .brand p{line-height:1.45}
+  .header-actions{display:grid;grid-template-columns:1fr;width:100%}
+  .header-actions .btn{min-height:44px}
+  .layout{padding:10px;gap:10px}
+  .side{gap:10px}
   .info-grid{grid-template-columns:1fr}
   .panel,.modal{border-radius:12px}
+  .map-scroll{max-height:72vh;padding:10px;-webkit-overflow-scrolling:touch}
+  .form-grid,.management-grid{grid-template-columns:1fr}
+  .form-grid .span-2{grid-column:auto}
+  .modal-bg{padding:0;align-items:flex-end}
+  .modal,.modal.wide{width:100%;max-height:94vh;border-radius:16px 16px 0 0}
+  .modal-actions{position:sticky;bottom:0;background:#fff}
+  .modal-actions .btn{min-height:46px;flex:1}
+  .photo-actions{grid-template-columns:1fr}
+  .photo-action{min-height:50px}
+  .action-row .btn{min-height:46px}
+}
+@media print{
+  @page{size:A4 landscape;margin:7mm}
+  body{background:#fff;color:#000}
+  body>*:not(#printSheet){display:none!important}
+  #printSheet{display:block!important;font-family:"Malgun Gothic",sans-serif}
+  .print-title{text-align:center;font-size:18pt;font-weight:900;letter-spacing:4px;margin:0 0 8px}
+  .print-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:6.5pt}
+  .print-table th,.print-table td{border:1px solid #000;padding:3px 2px;text-align:center;vertical-align:middle;word-break:keep-all;overflow-wrap:anywhere}
+  .print-table th{background:#dff6ff;font-weight:800}
+  .print-table td.text-left{text-align:left}
+  .print-approval{margin:10px 0 0 auto;border-collapse:collapse;font-size:8pt}
+  .print-approval th,.print-approval td{border:1px solid #000;width:70px;height:28px;text-align:center}
+  .print-approval th:first-child{width:42px;background:#dff6ff}
+  .print-foot{font-size:7pt;margin-top:5px;color:#333}
 }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
@@ -253,13 +309,11 @@ button{cursor:pointer}
     <div class="logo">CAR</div>
     <div>
       <h1>회사 차량 주차 관리</h1>
-      <p>회사차량 1대 · 예약 · 사용 여부 · 반납 위치 · 운전석 내부 사진 관리</p>
+      <p>회사차량 1대 · 예약 · 반납 위치 · 사진 · 운행일지 관리</p>
     </div>
   </div>
   <div class="header-actions">
-    <button class="btn" id="editCarBtn">차량 정보 수정</button>
-    <button class="btn" id="exportBtn">이력 JSON</button>
-    <button class="btn ghost-danger" id="resetBtn">초기화</button>
+    <button class="btn primary" id="printLogBtn">운행일지 출력</button>
   </div>
 </header>
 
@@ -324,20 +378,38 @@ button{cursor:pointer}
         </div>
         <div class="field">
           <label for="returnPhoto">운전석쪽 내부 사진 1장</label>
-          <label class="photo-box" id="returnPhotoBox" for="returnPhoto">
+          <div class="photo-box" id="returnPhotoBox">
             <img id="returnPhotoPreview" alt="운전석 내부 사진">
             <div class="photo-prompt">
               <strong>운전석쪽 내부 사진</strong>
-              클릭하여 사진을 선택하거나 촬영
+              아래 버튼으로 바로 촬영하거나 앨범에서 선택하세요.
             </div>
-            <input type="file" id="returnPhoto" accept="image/*" capture="environment">
-          </label>
+          </div>
+          <div class="photo-actions">
+            <label class="photo-action camera" for="returnCamera">카메라로 촬영
+              <input type="file" id="returnCamera" accept="image/*" capture="environment">
+            </label>
+            <label class="photo-action" for="returnPhoto">앨범에서 선택
+              <input type="file" id="returnPhoto" accept="image/*">
+            </label>
+          </div>
         </div>
         <div class="action-row">
           <button class="btn" id="cancelReturnBtn">취소</button>
           <button class="btn primary" id="completeReturnBtn">반납 완료</button>
         </div>
       </div>
+    </section>
+
+    <section class="panel" aria-labelledby="tripLogTitle">
+      <div class="panel-head">
+        <div>
+          <h2 id="tripLogTitle">최근 운행일지</h2>
+          <div class="sub">기존 양식의 기록과 새 반납 기록을 함께 관리합니다.</div>
+        </div>
+        <span class="reservation-badge" id="latestOdoBadge">누적 -</span>
+      </div>
+      <div class="log-summary" id="tripLogList"></div>
     </section>
 
     <section class="panel" aria-labelledby="historyTitle">
@@ -371,6 +443,49 @@ button{cursor:pointer}
   </div>
 </div>
 
+<div class="modal-bg" id="tripLogModal" aria-hidden="true">
+  <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="tripLogModalTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="tripLogModalTitle">차량 운행일지 작성</h3>
+        <div class="sub">반납 완료 전에 실제 운행 정보를 입력해 주세요.</div>
+      </div>
+      <button class="modal-close" data-close="tripLogModal" aria-label="운행일지 창 닫기">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="form-note">누적거리는 기존 양식의 마지막 값에 이번 주행거리를 더해 자동 계산합니다. 차량관리 상태는 O(양호), △(점검 필요), X(불량)로 기록합니다.</p>
+      <div class="form-grid">
+        <div class="field"><label for="logUseDate">사용일자</label><input type="date" id="logUseDate"></div>
+        <div class="field"><label for="logDepartment">부서</label><input id="logDepartment" maxlength="50" placeholder="예: 전장제어팀"></div>
+        <div class="field"><label for="logName">이름</label><input id="logName" maxlength="50" autocomplete="name"></div>
+        <div class="field"><label for="logSignature">서명 (SIGN)</label><input id="logSignature" maxlength="50"></div>
+        <div class="field"><label for="logDestination">외근지</label><input id="logDestination" maxlength="150" placeholder="여러 곳이면 모두 입력"></div>
+        <div class="field"><label for="logPurpose">목적</label><input id="logPurpose" maxlength="150" placeholder="간략히 입력"></div>
+        <div class="field"><label for="logStartTime">실 사용 시작</label><input type="time" id="logStartTime"></div>
+        <div class="field"><label for="logEndTime">실 사용 종료</label><input type="time" id="logEndTime"></div>
+        <div class="field"><label for="logTripKm">주행거리 (km)</label><input type="number" id="logTripKm" min="0" step="1" inputmode="numeric"></div>
+        <div class="field"><label for="logCumulativeKm">누적거리 (km, 자동)</label><input class="readonly-value" type="number" id="logCumulativeKm" readonly></div>
+        <div class="field"><label for="logFuelLiters">주유량 (리터, 주유 시)</label><input type="number" id="logFuelLiters" min="0" step="0.1" inputmode="decimal"></div>
+        <div class="field"><label for="logManagementOther">차량관리 기타</label><input id="logManagementOther" maxlength="100" placeholder="예: 파워시트 고장"></div>
+        <div class="span-2">
+          <div class="management-grid">
+            <div class="field"><label for="logExterior">외관 (기스 외)</label><select id="logExterior"><option>O</option><option>△</option><option>X</option></select></div>
+            <div class="field"><label for="logInterior">내부 청결</label><select id="logInterior"><option>O</option><option>△</option><option>X</option></select></div>
+            <div class="field"><label for="logEngineOil">엔진오일</label><select id="logEngineOil"><option>O</option><option>△</option><option>X</option></select></div>
+            <div class="field"><label for="logTransmission">미션</label><select id="logTransmission"><option>O</option><option>△</option><option>X</option></select></div>
+            <div class="field"><label for="logWheelBalance">휠밸런스</label><select id="logWheelBalance"><option>O</option><option>△</option><option>X</option></select></div>
+          </div>
+        </div>
+        <div class="field span-2"><label for="logRemarks">비고</label><textarea id="logRemarks" maxlength="300"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" data-close="tripLogModal">취소</button>
+      <button class="btn primary" id="saveTripLogBtn">운행일지 저장 및 반납 완료</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="reservationModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reservationModalTitle">
     <div class="modal-head">
@@ -398,29 +513,6 @@ button{cursor:pointer}
   </div>
 </div>
 
-<div class="modal-bg" id="editCarModal" aria-hidden="true">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editCarModalTitle">
-    <div class="modal-head">
-      <h3 id="editCarModalTitle">차량 정보 수정</h3>
-      <button class="modal-close" data-close="editCarModal" aria-label="차량 정보 수정 창 닫기">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="field">
-        <label for="editCarName">차량명</label>
-        <input id="editCarName" placeholder="예: 쏘나타" maxlength="50">
-      </div>
-      <div class="field" style="margin-bottom:0">
-        <label for="editCarPlate">차량번호</label>
-        <input id="editCarPlate" placeholder="예: 12가 3456" maxlength="20">
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn" data-close="editCarModal">취소</button>
-      <button class="btn primary" id="saveCarBtn">저장</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-bg" id="photoModal" aria-hidden="true">
   <div class="modal photo-view" role="dialog" aria-modal="true" aria-labelledby="photoModalTitle">
     <div class="modal-head">
@@ -435,6 +527,8 @@ button{cursor:pointer}
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<section class="print-sheet" id="printSheet" aria-label="차량 운행일지 인쇄 영역"></section>
+
 <script>
 const STORAGE_KEY = 'companyCarSingleProto_v1';
 const DB_NAME = 'CompanyCarSinglePhotoDB';
@@ -445,25 +539,25 @@ const MAX_PHOTO_EDGE = 1600;
 /*
   사진 기준 배치
   - 상단: 1~14 + 사무실 + 입구 + 출구
-  - A/B: 15행 2열
-  - C: 14행 2열, A/B보다 위쪽 1행만큼 내려가며 하단 정렬
-  - D/E/F: 15행 2열
-  - G/H: 15행 2열
-  - I: 13행 2열, G/H와 상단 정렬
+  - A/B: 각 15면 단일 열
+  - C: 14면 단일 열, A/B보다 위쪽 1행만큼 내려가며 하단 정렬
+  - D/E/F: 각 15면 단일 열
+  - G/H: 각 15면 단일 열
+  - I: 13면 단일 열, G/H와 상단 정렬
   - 좌측: 1~6 일반 주차면, 경차1~8, 하단 1~15 일반 주차면
   - 최하단: 경차 1~24 + 출구 + 입구
 */
 const groups = [
   {id:'TOP', kind:'row', count:14, x:168, y:24, w:36, h:74, small:false, prefix:'상단'},
-  {id:'A', kind:'doubleCol', count:15, x:238, y:122, w:81, h:24, prefix:'A'},
-  {id:'B', kind:'doubleCol', count:15, x:479, y:122, w:81, h:24, prefix:'B'},
-  {id:'C', kind:'doubleCol', count:14, x:720, y:146, w:81, h:24, prefix:'C'},
-  {id:'D', kind:'doubleCol', count:15, x:238, y:539, w:81, h:24, prefix:'D'},
-  {id:'E', kind:'doubleCol', count:15, x:479, y:539, w:81, h:24, prefix:'E'},
-  {id:'F', kind:'doubleCol', count:15, x:720, y:539, w:81, h:24, prefix:'F'},
-  {id:'G', kind:'doubleCol', count:15, x:238, y:955, w:81, h:24, prefix:'G'},
-  {id:'H', kind:'doubleCol', count:15, x:479, y:955, w:81, h:24, prefix:'H'},
-  {id:'I', kind:'doubleCol', count:13, x:720, y:955, w:81, h:24, prefix:'I'},
+  {id:'A', kind:'singleCol', count:15, x:238, y:122, w:162, h:24, prefix:'A', labeled:true},
+  {id:'B', kind:'singleCol', count:15, x:479, y:122, w:162, h:24, prefix:'B', labeled:true},
+  {id:'C', kind:'singleCol', count:14, x:720, y:146, w:162, h:24, prefix:'C', labeled:true},
+  {id:'D', kind:'singleCol', count:15, x:238, y:539, w:162, h:24, prefix:'D', labeled:true},
+  {id:'E', kind:'singleCol', count:15, x:479, y:539, w:162, h:24, prefix:'E', labeled:true},
+  {id:'F', kind:'singleCol', count:15, x:720, y:539, w:162, h:24, prefix:'F', labeled:true},
+  {id:'G', kind:'singleCol', count:15, x:238, y:955, w:162, h:24, prefix:'G', labeled:true},
+  {id:'H', kind:'singleCol', count:15, x:479, y:955, w:162, h:24, prefix:'H', labeled:true},
+  {id:'I', kind:'singleCol', count:13, x:720, y:955, w:162, h:24, prefix:'I', labeled:true},
   {id:'LEFT6', kind:'singleCol', count:6, x:80, y:465, w:30, h:57, prefix:'좌측상단'},
   {id:'LEFT15', kind:'singleCol', count:15, x:80, y:955, w:80, h:24, prefix:'좌측하단'},
   {id:'SMALL8', kind:'smallLabels', count:8, x:82, y:807, w:61, h:19, prefix:'경차'},
@@ -478,17 +572,33 @@ const facilities = [
   {text:'입구',x:881,y:1370,w:81,h:74,cls:'gate'}
 ];
 
+const baselineManagement = {
+  exterior:'O', interior:'O', engineOil:'O', transmission:'O', wheelBalance:'O', other:'파워시트 고장'
+};
+const initialTripLogs = [
+  {id:'xls-001',useDate:'2026-08-11',department:'연구개발본부',name:'이충호',destination:'충남지식센터, 목천공장, KTX역',purpose:'CTO회의',startTime:'13:10',endTime:'16:30',tripKm:30,cumulativeKm:102285,fuelLiters:null,management:{...baselineManagement},signature:'이충호',remarks:''},
+  {id:'xls-002',useDate:'2026-08-13',department:'전장회로팀',name:'박준혁',destination:'현대남양연구소',purpose:'NE2K개발설명회',startTime:'07:40',endTime:'16:30',tripKm:149,cumulativeKm:102434,fuelLiters:null,management:{...baselineManagement},signature:'박준혁',remarks:''},
+  {id:'xls-003',useDate:'2026-08-14',department:'전장회로팀',name:'박준혁',destination:'아산장재우체국',purpose:'SX3 C/PAD 와이어카 샘플전달',startTime:'17:00',endTime:'17:30',tripKm:4,cumulativeKm:102438,fuelLiters:null,management:{...baselineManagement},signature:'박준혁',remarks:''},
+  {id:'xls-004',useDate:'2026-08-18',department:'전장제어팀',name:'이찬석',destination:'한온시스템',purpose:'MTCU 납품',startTime:'10:00',endTime:'12:10',tripKm:129,cumulativeKm:102507,fuelLiters:null,management:{...baselineManagement},signature:'이찬석',remarks:''},
+  {id:'xls-005',useDate:'2026-08-18',department:'전장통합팀',name:'박은배',destination:'CTR로보틱스',purpose:'내구시험기중간실습',startTime:'13:20',endTime:'14:00',endTimeText:'2시 00분',tripKm:266,cumulativeKm:102833,fuelLiters:40,management:{...baselineManagement},signature:'박은배',remarks:''},
+  {id:'xls-006',useDate:'2026-08-19',department:'전장통합팀',name:'박은배',destination:'CTR로보틱스',purpose:'내구시험기중간실습',startTime:'09:30',endTime:'20:50',tripKm:652,cumulativeKm:103485,fuelLiters:null,management:{...baselineManagement},signature:'박은배',remarks:''},
+  {id:'xls-007',useDate:'2026-08-21',department:'전장제어팀',name:'김현종',destination:'CTR천안공장',purpose:'샘플수령',startTime:'09:40',endTime:'10:45',tripKm:22,cumulativeKm:103507,fuelLiters:null,management:{...baselineManagement},signature:'김현종',remarks:''},
+  {id:'xls-008',useDate:'2026-08-27',department:'전장제어팀',name:'성건재',destination:'CTR천안공장',purpose:'이오나이저 불량점검',startTime:'15:45',endTime:'20:15',tripKm:21,cumulativeKm:103528,fuelLiters:null,management:{...baselineManagement},signature:'성건재',remarks:''},
+  {id:'xls-009',useDate:'2026-08-31',department:'전장제어팀',name:'박준혁',destination:'CTR천안공장',purpose:'서류이관/자재수령',startTime:'14:00',endTime:'16:30',tripKm:24,cumulativeKm:103552,fuelLiters:null,management:{...baselineManagement},signature:'박준혁',remarks:''}
+];
+
 const initialState = {
   car:{
-    name:'회사차량',
-    plate:'차량번호 미등록',
+    name:'투싼ix',
+    plate:'69누 5829',
     status:'available',
-    slot:'A01-L',
+    slot:'A01',
     currentUser:'',
     useStartedAt:''
   },
   history:[],
-  reservations:[]
+  reservations:[],
+  tripLogs:initialTripLogs
 };
 
 let state = loadState();
@@ -500,15 +610,25 @@ let lastFocusedElement = null;
 let dbPromise = null;
 
 function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
+function normalizeSlotId(value=''){
+  return String(value).replace(/^([A-I]\d{2})-[LR]$/,'$1');
+}
 function loadState(){
   try{
     const raw=localStorage.getItem(STORAGE_KEY);
     if(!raw) return clone(initialState);
     const saved=JSON.parse(raw);
     return {
-      car:{...initialState.car,...(saved.car||{})},
+      car:{
+        ...initialState.car,
+        ...(saved.car||{}),
+        name:initialState.car.name,
+        plate:initialState.car.plate,
+        slot:normalizeSlotId(saved.car?.slot||initialState.car.slot)
+      },
       history:Array.isArray(saved.history)?saved.history:[],
-      reservations:Array.isArray(saved.reservations)?saved.reservations:[]
+      reservations:Array.isArray(saved.reservations)?saved.reservations:[],
+      tripLogs:Array.isArray(saved.tripLogs)?saved.tripLogs:clone(initialTripLogs)
     };
   }catch(e){
     console.warn('저장 데이터를 읽지 못해 초기값을 사용합니다.',e);
@@ -559,19 +679,13 @@ function renderMap(){
         fragment.appendChild(createSlot(id,i,g.x+(i-1)*g.w,g.y,g.w,g.h,!!g.small));
       }
     }
-    if(g.kind==='doubleCol'){
-      const label=document.createElement('div');
-      label.className='block-label';label.textContent=g.id+'열';
-      label.style.left=g.x+'px';label.style.top=(g.y-18)+'px';
-      fragment.appendChild(label);
-
-      for(let i=1;i<=g.count;i++){
-        const y=g.y+(i-1)*g.h;
-        fragment.appendChild(createSlot(`${g.prefix}${String(i).padStart(2,'0')}-L`,i,g.x,y,g.w,g.h,false));
-        fragment.appendChild(createSlot(`${g.prefix}${String(i).padStart(2,'0')}-R`,i,g.x+g.w,y,g.w,g.h,false));
-      }
-    }
     if(g.kind==='singleCol'){
+      if(g.labeled){
+        const label=document.createElement('div');
+        label.className='block-label';label.textContent=g.id+'열';
+        label.style.left=g.x+'px';label.style.top=(g.y-18)+'px';
+        fragment.appendChild(label);
+      }
       for(let i=1;i<=g.count;i++){
         const id=`${g.prefix}${String(i).padStart(2,'0')}`;
         fragment.appendChild(createSlot(id,i,g.x,g.y+(i-1)*g.h,g.w,g.h,false));
@@ -719,11 +833,87 @@ function renderHistory(){
   });
 }
 
+function getLatestCumulativeKm(){
+  return state.tripLogs.reduce((latest,item)=>Math.max(latest,Number(item.cumulativeKm)||0),0);
+}
+
+function renderTripLogs(){
+  const list=document.getElementById('tripLogList');
+  const latest=getLatestCumulativeKm();
+  document.getElementById('latestOdoBadge').textContent=`누적 ${latest.toLocaleString('ko-KR')}km`;
+  if(!state.tripLogs.length){
+    list.innerHTML='<div class="empty-history">운행일지가 없습니다.</div>';
+    return;
+  }
+  list.innerHTML=state.tripLogs.slice(-5).reverse().map(item=>`
+    <div class="log-item">
+      <div class="log-main">
+        <span>${escapeHtml(formatLogDate(item.useDate))} · ${escapeHtml(item.name)}</span>
+        <span class="odo-badge">누적 ${Number(item.cumulativeKm).toLocaleString('ko-KR')}km</span>
+      </div>
+      <div class="log-meta">${escapeHtml(item.destination)} · ${escapeHtml(item.purpose)}<br>주행 ${Number(item.tripKm).toLocaleString('ko-KR')}km · ${escapeHtml(item.startTime)}~${escapeHtml(item.endTime)}</div>
+    </div>
+  `).join('');
+}
+
+function formatLogDate(value){
+  const date=new Date(`${value}T00:00:00`);
+  if(!Number.isFinite(date.getTime())) return value||'-';
+  return `${date.getMonth()+1}/${date.getDate()}(${['일','월','화','수','목','금','토'][date.getDay()]})`;
+}
+
+function formatLogTime(value){
+  if(!value) return '';
+  const [hour,minute]=value.split(':');
+  return `${Number(hour)}시 ${minute}분`;
+}
+
+function printCell(value='',className=''){
+  return `<td${className?` class="${className}"`:''}>${escapeHtml(value)}</td>`;
+}
+
+function renderPrintLog(){
+  const source=state.tripLogs.length?state.tripLogs:[];
+  const pages=[];
+  for(let i=0;i<Math.max(source.length,1);i+=18) pages.push(source.slice(i,i+18));
+  document.getElementById('printSheet').innerHTML=pages.map((page,pageIndex)=>{
+    const rows=Array.from({length:18},(_,index)=>page[index]||null).map((item,index)=>{
+      if(!item) return `<tr>${Array.from({length:19},()=>'<td>&nbsp;</td>').join('')}</tr>`;
+      const m=item.management||{};
+      return `<tr>
+        ${printCell(String(pageIndex*18+index+1))}
+        ${printCell(formatLogDate(item.useDate))}
+        ${printCell(item.department)}${printCell(item.name)}
+        ${printCell(item.destination,'text-left')}${printCell(item.purpose,'text-left')}
+        ${printCell(formatLogTime(item.startTime))}${printCell(item.endTimeText||formatLogTime(item.endTime))}
+        ${printCell(`${Number(item.tripKm).toLocaleString('ko-KR')}km`)}${printCell(`${Number(item.cumulativeKm).toLocaleString('ko-KR')}km`)}
+        ${printCell(item.fuelLiters===null||item.fuelLiters===''?'':`${Number(item.fuelLiters).toLocaleString('ko-KR')}ℓ`)}
+        ${printCell(m.exterior)}${printCell(m.interior)}${printCell(m.engineOil)}${printCell(m.transmission)}${printCell(m.wheelBalance)}${printCell(m.other,'text-left')}
+        ${printCell(item.signature)}${printCell(item.remarks,'text-left')}
+      </tr>`;
+    }).join('');
+    return `<div class="print-page">
+      <h1 class="print-title">( 투싼ix ) 차 량 운 행 일 지</h1>
+      <table class="print-table">
+        <colgroup><col style="width:2.5%"><col style="width:5%"><col style="width:5%"><col style="width:4.5%"><col style="width:8%"><col style="width:8%"><col style="width:4.5%"><col style="width:4.5%"><col style="width:5%"><col style="width:5.5%"><col style="width:4.5%"><col style="width:3.5%"><col style="width:3.5%"><col style="width:3.5%"><col style="width:3.5%"><col style="width:3.5%"><col style="width:8%"><col style="width:5%"><col style="width:8%"></colgroup>
+        <thead>
+          <tr><th rowspan="3">No</th><th rowspan="3">사용일</th><th colspan="2">사용자</th><th colspan="2">외근정보</th><th colspan="2">사용시간</th><th colspan="2">ODO METER (km)</th><th rowspan="3">주유량<br>(리터)</th><th colspan="6">차량관리 (O, △, X)</th><th rowspan="3">서명<br>(SIGN)</th><th rowspan="3">비고</th></tr>
+          <tr><th rowspan="2">부서</th><th rowspan="2">이름</th><th rowspan="2">외근지<br><small>(여러 곳일 경우 모두 기재)</small></th><th rowspan="2">목적<br><small>(간략히 기재)</small></th><th rowspan="2">출발</th><th rowspan="2">도착</th><th rowspan="2">주행거리</th><th rowspan="2">누적거리</th><th rowspan="2">외관<br>(기스 외)</th><th rowspan="2">내부<br>청결</th><th rowspan="2">엔진<br>오일</th><th rowspan="2">미션</th><th rowspan="2">휠<br>밸런스</th><th rowspan="2">기타</th></tr>
+          <tr></tr>
+        </thead><tbody>${rows}</tbody>
+      </table>
+      <table class="print-approval"><tr><th rowspan="2">결재</th><th>작성</th><th>검토</th><th>승인</th></tr><tr><td></td><td></td><td></td></tr></table>
+      <div class="print-foot">페이지 ${pageIndex+1} / ${pages.length} · 누적거리 ${getLatestCumulativeKm().toLocaleString('ko-KR')}km</div>
+    </div>`;
+  }).join('');
+}
+
 function renderAll(){
   renderMap();
   renderCar();
   renderReservations();
   renderHistory();
+  renderTripLogs();
   document.getElementById('modeBanner').classList.toggle('show',returnMode);
   document.getElementById('returnPanel').hidden=!returnMode;
 }
@@ -781,7 +971,7 @@ document.getElementById('cancelReturnBtn').addEventListener('click',()=>{
   renderAll();
 });
 
-document.getElementById('returnPhoto').addEventListener('change',async e=>{
+async function handlePhotoSelection(e){
   const file=e.target.files?.[0];
   if(!file) return;
   if(!file.type.startsWith('image/')){
@@ -805,16 +995,80 @@ document.getElementById('returnPhoto').addEventListener('change',async e=>{
     toast('사진을 처리하지 못했습니다. 다른 사진을 선택해 주세요.');
     resetPhotoInput();
   }
-});
+}
+document.getElementById('returnPhoto').addEventListener('change',handlePhotoSelection);
+document.getElementById('returnCamera').addEventListener('change',handlePhotoSelection);
 
-document.getElementById('completeReturnBtn').addEventListener('click',async()=>{
+document.getElementById('completeReturnBtn').addEventListener('click',()=>{
   const name=document.getElementById('returnName').value.trim();
   if(!name){ toast('반납자 이름을 입력해 주세요.'); return; }
   if(!selectedReturnSlot){ toast('배치도에서 반납 위치를 선택해 주세요.'); return; }
   if(!returnPhotoFile){ toast('운전석쪽 내부 사진 1장을 등록해 주세요.'); return; }
+  openTripLogModal(name);
+});
+
+function openTripLogModal(name){
+  const today=new Date();
+  const p=n=>String(n).padStart(2,'0');
+  const previous=[...state.tripLogs].reverse().find(item=>normalizeName(item.name)===normalizeName(name));
+  document.getElementById('logUseDate').value=`${today.getFullYear()}-${p(today.getMonth()+1)}-${p(today.getDate())}`;
+  document.getElementById('logDepartment').value=previous?.department||'';
+  document.getElementById('logName').value=name;
+  document.getElementById('logSignature').removeAttribute('data-edited');
+  document.getElementById('logSignature').value=name;
+  document.getElementById('logDestination').value='';
+  document.getElementById('logPurpose').value='';
+  document.getElementById('logStartTime').value=/\d{2}:\d{2}$/.test(state.car.useStartedAt||'')?state.car.useStartedAt.slice(-5):'';
+  document.getElementById('logEndTime').value=`${p(today.getHours())}:${p(today.getMinutes())}`;
+  document.getElementById('logTripKm').value='';
+  document.getElementById('logFuelLiters').value='';
+  document.getElementById('logManagementOther').value='파워시트 고장';
+  ['logExterior','logInterior','logEngineOil','logTransmission','logWheelBalance'].forEach(id=>document.getElementById(id).value='O');
+  document.getElementById('logRemarks').value='';
+  updateCumulativePreview();
+  showModal('tripLogModal');
+  setTimeout(()=>document.getElementById('logDepartment').focus(),50);
+}
+
+function updateCumulativePreview(){
+  const trip=Number(document.getElementById('logTripKm').value)||0;
+  document.getElementById('logCumulativeKm').value=getLatestCumulativeKm()+trip;
+}
+document.getElementById('logTripKm').addEventListener('input',updateCumulativePreview);
+document.getElementById('logName').addEventListener('input',e=>{
+  const signature=document.getElementById('logSignature');
+  if(!signature.dataset.edited) signature.value=e.target.value;
+});
+document.getElementById('logSignature').addEventListener('input',e=>{e.target.dataset.edited='true';});
+
+document.getElementById('saveTripLogBtn').addEventListener('click',async()=>{
+  const values={
+    useDate:document.getElementById('logUseDate').value,
+    department:document.getElementById('logDepartment').value.trim(),
+    name:document.getElementById('logName').value.trim(),
+    signature:document.getElementById('logSignature').value.trim(),
+    destination:document.getElementById('logDestination').value.trim(),
+    purpose:document.getElementById('logPurpose').value.trim(),
+    startTime:document.getElementById('logStartTime').value,
+    endTime:document.getElementById('logEndTime').value,
+    tripRaw:document.getElementById('logTripKm').value,
+    tripKm:Number(document.getElementById('logTripKm').value),
+    fuelRaw:document.getElementById('logFuelLiters').value,
+    managementOther:document.getElementById('logManagementOther').value.trim(),
+    remarks:document.getElementById('logRemarks').value.trim()
+  };
+  if(!values.useDate||!values.department||!values.name||!values.destination||!values.purpose||!values.startTime||!values.endTime||!values.signature){
+    toast('사용일자, 사용자, 외근정보, 사용시간과 서명을 모두 입력해 주세요.'); return;
+  }
+  if(values.startTime>=values.endTime){ toast('도착 시간은 출발 시간보다 늦어야 합니다.'); return; }
+  if(values.tripRaw===''||!Number.isFinite(values.tripKm)||values.tripKm<0){ toast('주행거리를 0km 이상으로 입력해 주세요.'); return; }
+  const fuelLiters=values.fuelRaw===''?null:Number(values.fuelRaw);
+  if(fuelLiters!==null&&(!Number.isFinite(fuelLiters)||fuelLiters<0)){ toast('주유량을 올바르게 입력해 주세요.'); return; }
 
   const completeButton=document.getElementById('completeReturnBtn');
+  const saveButton=document.getElementById('saveTripLogBtn');
   completeButton.disabled=true;
+  saveButton.disabled=true;
   const historyId='h'+Date.now();
   const photoKey=historyId+'-driver';
   try{
@@ -823,6 +1077,7 @@ document.getElementById('completeReturnBtn').addEventListener('click',async()=>{
     console.error(e);
     toast('사진 저장 중 오류가 발생했습니다.');
     completeButton.disabled=false;
+    saveButton.disabled=false;
     return;
   }
 
@@ -835,19 +1090,45 @@ document.getElementById('completeReturnBtn').addEventListener('click',async()=>{
   state.history.unshift({
     id:historyId,
     action:'반납',
-    name,
+    name:values.name,
     time,
     slot:selectedReturnSlot,
     photoKey
   });
+  state.tripLogs.push({
+    id:'log'+Date.now(),
+    useDate:values.useDate,
+    department:values.department,
+    name:values.name,
+    destination:values.destination,
+    purpose:values.purpose,
+    startTime:values.startTime,
+    endTime:values.endTime,
+    tripKm:values.tripKm,
+    cumulativeKm:getLatestCumulativeKm()+values.tripKm,
+    fuelLiters,
+    management:{
+      exterior:document.getElementById('logExterior').value,
+      interior:document.getElementById('logInterior').value,
+      engineOil:document.getElementById('logEngineOil').value,
+      transmission:document.getElementById('logTransmission').value,
+      wheelBalance:document.getElementById('logWheelBalance').value,
+      other:values.managementOther
+    },
+    signature:values.signature,
+    remarks:values.remarks,
+    createdAt:new Date().toISOString()
+  });
 
   saveState();
+  hideModal('tripLogModal');
   returnMode=false;
   selectedReturnSlot='';
   resetPhotoInput();
   completeButton.disabled=false;
+  saveButton.disabled=false;
   renderAll();
-  toast(`${name}님 반납 등록이 완료되었습니다.`);
+  toast(`${values.name}님 운행일지와 반납 등록이 완료되었습니다.`);
 });
 
 document.getElementById('openReservationBtn').addEventListener('click',()=>{
@@ -912,40 +1193,11 @@ document.getElementById('reservationList').addEventListener('click',e=>{
   toast('예약이 취소되었습니다.');
 });
 
-document.getElementById('editCarBtn').addEventListener('click',()=>{
-  document.getElementById('editCarName').value=state.car.name;
-  document.getElementById('editCarPlate').value=state.car.plate==='차량번호 미등록'?'':state.car.plate;
-  showModal('editCarModal');
+document.getElementById('printLogBtn').addEventListener('click',()=>{
+  renderPrintLog();
+  window.print();
 });
-
-document.getElementById('saveCarBtn').addEventListener('click',()=>{
-  const name=document.getElementById('editCarName').value.trim();
-  const plate=document.getElementById('editCarPlate').value.trim();
-  if(!name){ toast('차량명을 입력해 주세요.'); return; }
-  state.car.name=name;
-  state.car.plate=plate||'차량번호 미등록';
-  saveState();hideModal('editCarModal');renderCar();toast('차량 정보를 저장했습니다.');
-});
-
-document.getElementById('exportBtn').addEventListener('click',()=>{
-  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),...state},null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`회사차량_사용이력_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),0);
-});
-
-document.getElementById('resetBtn').addEventListener('click',async()=>{
-  if(!confirm('차량 정보, 예약과 사용 이력을 초기화하시겠습니까?')) return;
-  try{ await clearPhotos(); }
-  catch(e){ console.warn('사진 저장소를 비우지 못했습니다.',e); }
-  state=clone(initialState);
-  saveState();
-  returnMode=false;selectedReturnSlot='';resetPhotoInput();
-  renderAll();
-  toast('초기화되었습니다.');
-});
+window.addEventListener('beforeprint',renderPrintLog);
 
 document.querySelectorAll('[data-close]').forEach(btn=>{
   btn.addEventListener('click',()=>hideModal(btn.dataset.close));
@@ -1012,6 +1264,7 @@ function toast(msg){
 function resetPhotoInput(){
   returnPhotoFile=null;
   document.getElementById('returnPhoto').value='';
+  document.getElementById('returnCamera').value='';
   document.getElementById('returnPhotoPreview').removeAttribute('src');
   document.getElementById('returnPhotoBox').classList.remove('has');
   if(returnPreviewUrl){
@@ -1071,16 +1324,6 @@ async function readPhoto(key){
   return new Promise((resolve,reject)=>{
     req.onsuccess=()=>resolve(req.result?.blob||null);
     req.onerror=()=>reject(req.error);
-  });
-}
-async function clearPhotos(){
-  const db=await openDB();
-  const tx=db.transaction(DB_STORE,'readwrite');
-  tx.objectStore(DB_STORE).clear();
-  return new Promise((resolve,reject)=>{
-    tx.oncomplete=resolve;
-    tx.onerror=()=>reject(tx.error);
-    tx.onabort=()=>reject(tx.error);
   });
 }
 async function showHistoryPhoto(key){
