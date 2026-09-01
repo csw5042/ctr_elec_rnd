@@ -871,7 +871,7 @@ body::before{
     </div>
   </div>
   <div class="header-actions">
-    <span class="sync-status" id="firebaseStatus" role="status" aria-live="polite">Firebase 연결 중</span>
+    <span class="sync-status" id="firebaseStatus" role="status" aria-live="polite">DB 연결 중</span>
     <div class="auth-actions" aria-label="사용자 로그인">
       <span class="auth-user-badge" id="authUserBadge" hidden></span>
       <button class="btn" type="button" id="loginBtn">로그인</button>
@@ -1547,7 +1547,7 @@ function scheduleDeferredFirebaseRefresh(){
         renderAll();
       }
       deferredFirebaseRefresh=false;
-      setFirebaseStatus('online','Firebase 동기화됨');
+      setFirebaseStatus('online','DB 동기화됨');
     }catch(error){
       console.warn('지연 동기화 새로고침 실패:',error);
     }
@@ -1572,7 +1572,7 @@ function saveState(){
 }
 
 async function initializeFirebaseSync(){
-  setFirebaseStatus('','Firebase 연결 중');
+  setFirebaseStatus('','DB 연결 중');
   try{
     const snapshot=await FIREBASE_STATE_DOC.get();
     if(snapshot.exists && snapshot.data()?.state){
@@ -1588,7 +1588,7 @@ async function initializeFirebaseSync(){
     }
 
     firebaseReady=true;
-    setFirebaseStatus('online','Firebase 연결됨');
+    setFirebaseStatus('online','DB 연결됨');
 
     // 기존 데이터에도 10개 초과 사진이 있으면 접속 시 한 번 자동 정리
     if(await pruneOldPhotos()){
@@ -1599,22 +1599,22 @@ async function initializeFirebaseSync(){
       if(!snapshot.exists || !snapshot.data()?.state) return;
       if(hasBlockingInteraction()){
         deferredFirebaseRefresh=true;
-        setFirebaseStatus('online','Firebase 동기화 대기');
+        setFirebaseStatus('online','DB 동기화 대기');
         return;
       }
       state=normalizeLoadedState(snapshot.data().state);
       saveLocalState();
       renderAll();
-      setFirebaseStatus('online','Firebase 동기화됨');
+      setFirebaseStatus('online','DB 동기화됨');
     },error=>{
       console.error('Firebase 실시간 동기화 오류:',error);
       firebaseReady=false;
-      setFirebaseStatus('offline','Firebase 연결 끊김 · 로컬 사용');
+      setFirebaseStatus('offline','DB 연결 끊김 · 로컬 사용');
     });
   }catch(error){
     console.error('Firebase 초기 연결 실패:',error);
     firebaseReady=false;
-    setFirebaseStatus('offline','Firebase 연결 실패 · 로컬 사용');
+    setFirebaseStatus('offline','DB 연결 실패 · 로컬 사용');
     toast('Firebase에 연결하지 못해 현재 PC의 로컬 데이터로 실행합니다.');
   }
 }
@@ -1820,7 +1820,7 @@ function openAdminLocationModal(){
     return;
   }
   if(!firebaseReady){
-    toast('Firebase 연결 후 현재 위치를 수정해 주세요.');
+    toast('DB 연결 후 현재 위치를 수정해 주세요.');
     return;
   }
   const select=document.getElementById('adminLocationSelect');
@@ -2284,7 +2284,7 @@ document.getElementById('saveTripLogBtn').addEventListener('click',async()=>{
 document.getElementById('saveAdminLocationBtn').addEventListener('click',async()=>{
   if(!isAdmin()){ toast('관리자만 현재 위치를 수정할 수 있습니다.'); return; }
   if(state.car.status!=='available'){ toast('차량 사용 중에는 현재 위치를 수정할 수 없습니다.'); return; }
-  if(!firebaseReady){ toast('Firebase 연결 후 현재 위치를 수정해 주세요.'); return; }
+  if(!firebaseReady){ toast('DB 연결 후 현재 위치를 수정해 주세요.'); return; }
   const select=document.getElementById('adminLocationSelect');
   const nextSlot=select.value;
   if(!nextSlot || !getAllParkingSlotIds().includes(nextSlot)){ toast('주차 위치를 선택해 주세요.'); return; }
@@ -2459,7 +2459,7 @@ document.getElementById('tripLogList').addEventListener('click',async e=>{
   const button=e.target.closest('[data-delete-triplog]');
   if(!button) return;
   if(!isAdmin()){ toast('관리자만 운행일지를 삭제할 수 있습니다.'); return; }
-  if(!firebaseReady){ toast('Firebase 연결 후 운행일지를 삭제해 주세요.'); return; }
+  if(!firebaseReady){ toast('DB 연결 후 운행일지를 삭제해 주세요.'); return; }
   const item=state.tripLogs.find(log=>log.id===button.dataset.deleteTriplog);
   if(!item) return;
   if(!confirm(`${formatLogDate(item.useDate)} · ${item.name} 운행일지를 삭제하시겠습니까?
@@ -2882,7 +2882,7 @@ async function savePhoto(key,file){
 
   if(!firebaseReady){
     if(localSaved){
-      toast('Firebase 연결이 없어 사진은 현재 PC에만 임시 저장되었습니다.');
+      toast('DB 연결이 없어 사진은 현재 PC에만 임시 저장되었습니다.');
       return {remote:false,local:true};
     }
     throw new Error('Firebase 연결 및 로컬 사진 저장을 모두 사용할 수 없습니다.');
