@@ -945,6 +945,12 @@ body::before{
   .auth-user-badge{max-width:56px!important}
 }
 
+
+/* ===== 2026-09-01 차량 사용 시 주차 위치 선택 흐름 ===== */
+@media(max-width:720px){
+  body.use-mode-active .mobile-quick-nav{display:none}
+  body.use-mode-active{padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+}
 </style>
 </head>
 <body>
@@ -1120,6 +1126,10 @@ body::before{
       <button class="modal-close" data-close="useModal" aria-label="차량 사용 창 닫기">×</button>
     </div>
     <div class="modal-body">
+      <div class="field">
+        <label id="useSlotLabel">출차 위치<span class="required-mark" aria-hidden="true">*</span></label>
+        <div class="selected-slot" id="useSelectedSlotText" role="status" aria-labelledby="useSlotLabel">선택되지 않음</div>
+      </div>
       <div class="field" style="margin:0">
         <label for="useName">사용자 이름<span class="required-mark" aria-hidden="true">*</span></label>
         <input id="useName" placeholder="이름 입력" maxlength="50" autocomplete="name" required>
@@ -1434,6 +1444,8 @@ const initialState = {
 };
 
 let state = loadState();
+let useLocationMode = false;
+let selectedUseSlot = '';
 let returnMode = false;
 let selectedReturnSlot = '';
 let returnPhotoFile = null;
@@ -1549,6 +1561,7 @@ async function handleAuthenticatedUser(user){
   if(!user){
     currentSession=null;
     passwordChangeRequired=false;
+    if(useLocationMode){ useLocationMode=false; selectedUseSlot=''; }
     if(returnMode){ returnMode=false; selectedReturnSlot=''; resetPhotoInput(); }
     renderAll();
     return;
@@ -1618,7 +1631,7 @@ function setFirebaseStatus(mode,text){
 }
 
 function hasBlockingInteraction(){
-  return returnMode || activeTouchPointers.size>0 || !!document.querySelector('.modal-bg.show');
+  return useLocationMode || returnMode || activeTouchPointers.size>0 || !!document.querySelector('.modal-bg.show');
 }
 
 function scheduleDeferredFirebaseRefresh(){
@@ -1643,17 +1656,26 @@ function scheduleDeferredFirebaseRefresh(){
 }
 
 function saveState(){
-  // Firebase 장애 시에도 현재 PC에서 데이터가 사라지지 않도록 로컬 백업 유지
+  // DB 장애 시에도 복구를 위해 현재 PC에 로컬 백업을 유지합니다.
   saveLocalState();
   if(!firebaseReady) return Promise.resolve(false);
 
   firebaseWritePromise=FIREBASE_STATE_DOC.set({
     state:clone(state),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-  },{merge:true}).then(()=>true).catch(error=>{
-    console.error('Firebase 상태 저장 실패:',error);
-    setFirebaseStatus('offline','Firebase 저장 오류 · 로컬 백업');
-    toast('Firebase 저장에 실패하여 현재 PC에만 임시 저장했습니다.');
+  },{merge:true}).then(()=>{
+    setFirebaseStatus('online','DB 동기화됨');
+    return true;
+  }).catch(error=>{
+    console.error('DB 상태 저장 실패:',error);
+    const code=String(error?.code||'');
+    if(code.includes('permission-denied')){
+      setFirebaseStatus('offline','DB 저장 권한 오류');
+      toast('DB 저장 권한이 없습니다. Firestore Rules를 확인해 주세요.');
+    }else{
+      setFirebaseStatus('offline','DB 저장 오류 · 로컬 백업');
+      toast('DB 저장에 실패했습니다. 네트워크 연결을 확인해 주세요.');
+    }
     return false;
   });
   return firebaseWritePromise;
@@ -1703,7 +1725,7 @@ async function initializeFirebaseSync(){
     console.error('Firebase 초기 연결 실패:',error);
     firebaseReady=false;
     setFirebaseStatus('offline','DB 연결 실패 · 로컬 사용');
-    toast('Firebase에 연결하지 못해 현재 PC의 로컬 데이터로 실행합니다.');
+    toast('DB에 연결하지 못해 현재 PC의 로컬 데이터로 실행합니다.');
   }
 }
 
@@ -1722,6 +1744,15 @@ function createSlot(slotId,label,x,y,w,h,isSmall=false){
   if(state.car.status==='available' && state.car.slot===slotId){
     el.classList.add('car-here');
     el.title=`${state.car.name}`;
+  }
+  if(useLocationMode){
+    el.classList.add('return-pickable');
+    if(selectedUseSlot===slotId){
+      el.classList.add('return-selected');
+      el.setAttribute('aria-pressed','true');
+    }else{
+      el.setAttribute('aria-pressed','false');
+    }
   }
   if(returnMode){
     el.classList.add('return-pickable');
@@ -1779,6 +1810,14 @@ function renderMap(){
 function selectParkingSlot(slot){
   if(!slot) return;
   const slotId=slot.dataset.slot;
+  if(useLocationMode){
+    selectedUseSlot=slotId;
+    useLocationMode=false;
+    toast(`${slotId} 출차 위치를 선택했습니다.`);
+    renderAll();
+    setTimeout(()=>openUseModal(),100);
+    return;
+  }
   if(returnMode){
     document.querySelector('.return-selected')?.classList.remove('return-selected');
     document.querySelectorAll('[data-slot][aria-pressed="true"]').forEach(el=>el.setAttribute('aria-pressed','false'));
@@ -1967,7 +2006,7 @@ function renderCar(){
 document.getElementById('carCard').addEventListener('click',e=>{
   if(e.target.closest('#useCarAction')){
     if(!requireLogin()) return;
-    openUseModal();
+    startUseLocationMode();
     return;
   }
   if(e.target.closest('#returnCarAction')){
@@ -2107,16 +2146,46 @@ function renderAll(){
   renderHistory();
   renderTripLogs();
   renderAuthControls();
-  document.getElementById('modeBanner').classList.toggle('show',returnMode);
+  const mapSelectionMode=useLocationMode||returnMode;
+  const modeBanner=document.getElementById('modeBanner');
+  modeBanner.classList.toggle('show',mapSelectionMode);
+  modeBanner.textContent=useLocationMode
+    ? '차량 사용 위치 선택 중입니다. 배치도에서 차량이 주차된 위치를 선택해 주세요.'
+    : '반납 위치 선택 중입니다. 배치도에서 주차면을 선택해 주세요.';
   document.getElementById('returnPanel').hidden=!returnMode;
+  document.body.classList.toggle('use-mode-active',useLocationMode);
   document.body.classList.toggle('return-mode-active',returnMode);
   const dockText=document.getElementById('mapReturnDockText');
   if(dockText) dockText.textContent=selectedReturnSlot?`선택 위치: ${selectedReturnSlot}`:'반납 위치를 선택해 주세요.';
   applyMapScale(mapScale,false);
 }
 
+function startUseLocationMode(){
+  if(!requireLogin()) return;
+  if(state.car.status!=='available'){
+    toast('현재 차량은 사용 중입니다.');
+    return;
+  }
+  useLocationMode=true;
+  selectedUseSlot='';
+  renderAll();
+  // 차량 사용 등록도 반납과 동일하게 위치 선택 시에는 확대하여 터치 정확도를 확보합니다.
+  if(isMobileView() && mapScale<1) setMapScale(1);
+  setTimeout(()=>{
+    document.getElementById('parkingPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
+    toast('배치도에서 차량의 현재 주차 위치를 선택해 주세요.');
+  },80);
+}
+
 function openUseModal(){
   if(!requireLogin()) return;
+  if(!selectedUseSlot){
+    toast('배치도에서 차량의 현재 위치를 먼저 선택해 주세요.');
+    startUseLocationMode();
+    return;
+  }
+  const slotText=document.getElementById('useSelectedSlotText');
+  if(slotText) slotText.textContent=selectedUseSlot;
   const input=document.getElementById('useName');
   input.value=currentSession?.role==='admin'?(getActiveReservation()?.name||''):(currentSession?.name||'');
   input.readOnly=currentSession?.role!=='admin';
@@ -2124,18 +2193,27 @@ function openUseModal(){
   setTimeout(()=>document.getElementById('useName').focus(),50);
 }
 
-document.getElementById('startUseBtn').addEventListener('click',()=>{
+document.getElementById('startUseBtn').addEventListener('click',async()=>{
   if(!requireLogin()) return;
   const name=document.getElementById('useName').value.trim();
+  if(!selectedUseSlot){ toast('배치도에서 출차 위치를 선택해 주세요.'); hideModal('useModal'); startUseLocationMode(); return; }
   if(!name){ toast('사용자 이름을 입력해 주세요.'); return; }
   const activeReservation=getActiveReservation();
   if(activeReservation && normalizeName(activeReservation.name)!==normalizeName(name)){
     toast(`현재 ${activeReservation.name}님의 예약 시간입니다.`);
     return;
   }
+  if(!firebaseReady){
+    toast('DB 연결 후 차량 사용을 시작해 주세요.');
+    return;
+  }
 
-  const oldSlot=state.car.slot;
+  const button=document.getElementById('startUseBtn');
+  const previousState=clone(state);
+  const oldSlot=selectedUseSlot;
   const time=nowText();
+  button.disabled=true;
+
   state.car.status='inuse';
   state.car.currentUser=name;
   state.car.useStartedAt=time;
@@ -2149,10 +2227,23 @@ document.getElementById('startUseBtn').addEventListener('click',()=>{
     fromSlot:oldSlot
   });
 
-  saveState();
+  const synced=await saveState();
+  if(!synced){
+    state=normalizeLoadedState(previousState);
+    saveLocalState();
+    renderAll();
+    button.disabled=false;
+    toast('차량 사용 등록을 취소했습니다. DB 저장 설정을 확인해 주세요.');
+    return;
+  }
+
   hideModal('useModal');
+  useLocationMode=false;
+  selectedUseSlot='';
+  button.disabled=false;
   renderAll();
-  toast(`${name}님 차량 사용을 시작했습니다.`);
+  scheduleDeferredFirebaseRefresh();
+  toast(`${name}님 차량 사용을 시작했습니다. (출차 위치: ${oldSlot})`);
 });
 
 function startReturnMode(){
@@ -2388,7 +2479,7 @@ document.getElementById('saveAdminLocationBtn').addEventListener('click',async()
     saveLocalState();
     renderAll();
     button.disabled=false;
-    toast('Firebase DB 저장에 실패하여 위치 수정을 취소했습니다.');
+    toast('DB 저장에 실패하여 위치 수정을 취소했습니다.');
     return;
   }
   hideModal('adminLocationModal');
@@ -2552,7 +2643,7 @@ document.getElementById('tripLogList').addEventListener('click',async e=>{
   const item=state.tripLogs.find(log=>log.id===button.dataset.deleteTriplog);
   if(!item) return;
   if(!confirm(`${formatLogDate(item.useDate)} · ${item.name} 운행일지를 삭제하시겠습니까?
-Firestore DB에서도 해당 내역이 삭제됩니다.`)) return;
+DB에서도 해당 내역이 삭제됩니다.`)) return;
   button.disabled=true;
   const backup=[...state.tripLogs];
   state.tripLogs=state.tripLogs.filter(log=>log.id!==item.id);
@@ -2561,11 +2652,11 @@ Firestore DB에서도 해당 내역이 삭제됩니다.`)) return;
     state.tripLogs=backup;
     saveLocalState();
     renderTripLogs();
-    toast('Firebase DB 삭제에 실패하여 운행일지 삭제를 취소했습니다.');
+    toast('DB 삭제에 실패하여 운행일지 삭제를 취소했습니다.');
     return;
   }
   renderTripLogs();
-  toast('운행일지를 Firestore DB에서 삭제했습니다.');
+  toast('운행일지를 DB에서 삭제했습니다.');
 });
 
 document.getElementById('historyList').addEventListener('click',async e=>{
@@ -2618,6 +2709,7 @@ function hideModal(id){
   const modal=document.getElementById(id);
   modal.classList.remove('show');
   modal.setAttribute('aria-hidden','true');
+  if(id==='useModal' && state.car.status==='available') selectedUseSlot='';
   if(lastFocusedElement?.isConnected && !isMobileView()){
     try{ lastFocusedElement.focus({preventScroll:true}); }catch(_){ lastFocusedElement.focus(); }
   }
@@ -2711,7 +2803,7 @@ if('IntersectionObserver' in window){
   const quickButtons=[...document.querySelectorAll('[data-scroll-target]')];
   const quickTargets=quickButtons.map(btn=>document.getElementById(btn.dataset.scrollTarget)).filter(Boolean);
   const quickObserver=new IntersectionObserver(entries=>{
-    if(!isMobileView() || returnMode) return;
+    if(!isMobileView() || useLocationMode || returnMode) return;
     const visible=entries.filter(entry=>entry.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
     if(!visible) return;
     quickButtons.forEach(btn=>btn.classList.toggle('active',btn.dataset.scrollTarget===visible.target.id));
