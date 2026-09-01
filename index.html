@@ -162,6 +162,7 @@ button{cursor:pointer}
 }
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
 .field label{font-size:12px;font-weight:900;color:#4e5969}
+.required-mark{color:#d92d20;font-weight:950;margin-left:3px}
 .field input{
   border:1px solid #cfd7e3;border-radius:10px;padding:10px 11px;background:#fff;
 }
@@ -939,15 +940,15 @@ body::before{
       <div class="return-panel">
         <div class="return-help">배치도에서 실제 반납한 주차면을 클릭하면 아래 위치에 자동 등록됩니다.</div>
         <div class="field">
-          <label for="returnName">반납자 이름</label>
-          <input id="returnName" placeholder="이름 입력" maxlength="50" autocomplete="name">
+          <label for="returnName">반납자 이름<span class="required-mark" aria-hidden="true">*</span></label>
+          <input id="returnName" placeholder="이름 입력" maxlength="50" autocomplete="name" required>
         </div>
         <div class="field">
-          <span class="sr-only" id="returnSlotLabel">반납 위치</span>
+          <label id="returnSlotLabel">반납 위치<span class="required-mark" aria-hidden="true">*</span></label>
           <div class="selected-slot" id="selectedSlotText" role="status" aria-labelledby="returnSlotLabel">선택되지 않음</div>
         </div>
         <div class="field">
-          <label for="returnPhoto">운전석쪽 내부 사진 1장</label>
+          <label for="returnPhoto">운전석쪽 내부 사진 1장<span class="required-mark" aria-hidden="true">*</span></label>
           <div class="photo-box" id="returnPhotoBox">
             <img id="returnPhotoPreview" alt="운전석 내부 사진">
             <div class="photo-prompt">
@@ -1002,8 +1003,8 @@ body::before{
     </div>
     <div class="modal-body">
       <div class="field" style="margin:0">
-        <label for="useName">사용자 이름</label>
-        <input id="useName" placeholder="이름 입력" maxlength="50" autocomplete="name">
+        <label for="useName">사용자 이름<span class="required-mark" aria-hidden="true">*</span></label>
+        <input id="useName" placeholder="이름 입력" maxlength="50" autocomplete="name" required>
       </div>
     </div>
     <div class="modal-actions">
@@ -1023,17 +1024,24 @@ body::before{
       <button class="modal-close" data-close="tripLogModal" aria-label="운행일지 창 닫기">×</button>
     </div>
     <div class="modal-body">
-      <p class="form-note">누적거리는 기존 양식의 마지막 값에 이번 주행거리를 더해 자동 계산합니다. 차량관리 상태는 O(양호), △(점검 필요), X(불량)로 기록합니다.</p>
+      <p class="form-note"><span class="required-mark" aria-hidden="true">*</span> 표시는 필수 입력 항목입니다. 누적거리는 기존 양식의 마지막 값에 이번 주행거리를 더해 자동 계산합니다. 차량관리 상태는 O(양호), △(점검 필요), X(불량)로 기록합니다.</p>
       <div class="form-grid">
-        <div class="field"><label for="logUseDate">사용일자</label><input type="date" id="logUseDate"></div>
-        <div class="field"><label for="logDepartment">부서</label><input id="logDepartment" maxlength="50" placeholder="예: 전장제어팀"></div>
-        <div class="field"><label for="logName">이름</label><input id="logName" maxlength="50" autocomplete="name"></div>
-        <div class="field"><label for="logSignature">서명 (SIGN)</label><input id="logSignature" maxlength="50"></div>
-        <div class="field"><label for="logDestination">외근지</label><input id="logDestination" maxlength="150" placeholder="여러 곳이면 모두 입력"></div>
-        <div class="field"><label for="logPurpose">목적</label><input id="logPurpose" maxlength="150" placeholder="간략히 입력"></div>
-        <div class="field"><label for="logStartTime">실 사용 시작</label><input type="time" id="logStartTime"></div>
-        <div class="field"><label for="logEndTime">실 사용 종료</label><input type="time" id="logEndTime"></div>
-        <div class="field"><label for="logTripKm">주행거리 (km)</label><input type="number" id="logTripKm" min="0" step="1" inputmode="numeric"></div>
+        <div class="field"><label for="logUseDate">사용일자<span class="required-mark" aria-hidden="true">*</span></label><input type="date" id="logUseDate" required></div>
+        <div class="field"><label for="logDepartment">부서<span class="required-mark" aria-hidden="true">*</span></label><select id="logDepartment" required>
+          <option value="">부서 선택</option>
+          <option value="연구개발본부">연구개발본부</option>
+          <option value="전장통합팀">전장통합팀</option>
+          <option value="전장회로팀">전장회로팀</option>
+          <option value="전장제어팀">전장제어팀</option>
+          <option value="전장검증팀">전장검증팀</option>
+        </select></div>
+        <div class="field"><label for="logName">이름<span class="required-mark" aria-hidden="true">*</span></label><input id="logName" maxlength="50" autocomplete="name" required></div>
+        <div class="field"><label for="logSignature">서명 (SIGN)<span class="required-mark" aria-hidden="true">*</span></label><input id="logSignature" maxlength="50" required></div>
+        <div class="field"><label for="logDestination">외근지<span class="required-mark" aria-hidden="true">*</span></label><input id="logDestination" maxlength="150" placeholder="여러 곳이면 모두 입력" required></div>
+        <div class="field"><label for="logPurpose">목적<span class="required-mark" aria-hidden="true">*</span></label><input id="logPurpose" maxlength="150" placeholder="간략히 입력" required></div>
+        <div class="field"><label for="logStartTime">실 사용 시작<span class="required-mark" aria-hidden="true">*</span></label><input type="time" id="logStartTime" required></div>
+        <div class="field"><label for="logEndTime">실 사용 종료<span class="required-mark" aria-hidden="true">*</span></label><input type="time" id="logEndTime" required></div>
+        <div class="field"><label for="logTripKm">주행거리 (km)<span class="required-mark" aria-hidden="true">*</span></label><input type="number" id="logTripKm" min="0" step="1" inputmode="numeric" required></div>
         <div class="field"><label for="logCumulativeKm">누적거리 (km, 자동)</label><input class="readonly-value" type="number" id="logCumulativeKm" readonly></div>
         <div class="field"><label for="logFuelLiters">주유량 (리터, 주유 시)</label><input type="number" id="logFuelLiters" min="0" step="0.1" inputmode="decimal"></div>
         <div class="field"><label for="logManagementOther">차량관리 기타</label><input id="logManagementOther" maxlength="100" placeholder="예: 파워시트 고장"></div>
@@ -1064,16 +1072,16 @@ body::before{
     </div>
     <div class="modal-body">
       <div class="field">
-        <label for="reservationName">예약자 이름</label>
-        <input id="reservationName" placeholder="이름 입력" maxlength="50" autocomplete="name">
+        <label for="reservationName">예약자 이름<span class="required-mark" aria-hidden="true">*</span></label>
+        <input id="reservationName" placeholder="이름 입력" maxlength="50" autocomplete="name" required>
       </div>
       <div class="field">
-        <label for="reservationStart">사용 시작 예정</label>
-        <input type="datetime-local" id="reservationStart">
+        <label for="reservationStart">사용 시작 예정<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="datetime-local" id="reservationStart" required>
       </div>
       <div class="field" style="margin-bottom:0">
-        <label for="reservationEnd">사용 종료 예정</label>
-        <input type="datetime-local" id="reservationEnd">
+        <label for="reservationEnd">사용 종료 예정<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="datetime-local" id="reservationEnd" required>
       </div>
     </div>
     <div class="modal-actions">
@@ -1800,7 +1808,8 @@ function openTripLogModal(name){
   const p=n=>String(n).padStart(2,'0');
   const previous=[...state.tripLogs].reverse().find(item=>normalizeName(item.name)===normalizeName(name));
   document.getElementById('logUseDate').value=`${today.getFullYear()}-${p(today.getMonth()+1)}-${p(today.getDate())}`;
-  document.getElementById('logDepartment').value=previous?.department||'';
+  const allowedDepartments=['연구개발본부','전장통합팀','전장회로팀','전장제어팀','전장검증팀'];
+  document.getElementById('logDepartment').value=allowedDepartments.includes(previous?.department)?previous.department:'';
   document.getElementById('logName').value=name;
   document.getElementById('logSignature').removeAttribute('data-edited');
   document.getElementById('logSignature').value=name;
@@ -1846,7 +1855,7 @@ document.getElementById('saveTripLogBtn').addEventListener('click',async()=>{
     remarks:document.getElementById('logRemarks').value.trim()
   };
   if(!values.useDate||!values.department||!values.name||!values.destination||!values.purpose||!values.startTime||!values.endTime||!values.signature){
-    toast('사용일자, 사용자, 외근정보, 사용시간과 서명을 모두 입력해 주세요.'); return;
+    toast('별(*) 표시된 필수 항목을 모두 입력해 주세요.'); return;
   }
   if(values.startTime>=values.endTime){ toast('도착 시간은 출발 시간보다 늦어야 합니다.'); return; }
   if(values.tripRaw===''||!Number.isFinite(values.tripKm)||values.tripKm<0){ toast('주행거리를 0km 이상으로 입력해 주세요.'); return; }
