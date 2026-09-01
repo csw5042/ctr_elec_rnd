@@ -140,7 +140,6 @@ button{cursor:pointer}
 .car-card{padding:18px}
 .car-title{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .car-name{font-size:20px;font-weight:900}
-.car-number{color:var(--muted);font-size:12px;margin-top:4px}
 .status{
   padding:7px 10px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap;
 }
@@ -513,7 +512,6 @@ body::before{
 
 .car-card{padding:20px}
 .car-name{font-size:22px;font-weight:950;letter-spacing:-.045em;color:#1a1c20}
-.car-number{color:#8b919a;font-size:11px;margin-top:4px;font-weight:650;letter-spacing:.02em}
 .status{padding:7px 10px;border-radius:9px;font-size:10.5px;font-weight:900;letter-spacing:.01em}
 .status.available{background:#ecf9f2;color:#14764b;border:1px solid #d6efe2}
 .status.inuse{background:#fff4e3;color:#985800;border:1px solid #f2dfbb}
@@ -1205,7 +1203,6 @@ const initialTripLogs = [
 const initialState = {
   car:{
     name:'투싼ix',
-    plate:'69누 5829',
     status:'available',
     slot:'A01',
     currentUser:'',
@@ -1234,12 +1231,13 @@ function normalizeSlotId(value=''){
   return String(value).replace(/^([A-I]\d{2})-[LR]$/,'$1');
 }
 function normalizeLoadedState(saved){
+  const savedCar={...(saved?.car||{})};
+  delete savedCar.plate; // 구버전 Firebase/localStorage에 남은 차량번호 제거
   return {
     car:{
       ...initialState.car,
-      ...(saved?.car||{}),
+      ...savedCar,
       name:initialState.car.name,
-      plate:initialState.car.plate,
       slot:normalizeSlotId(saved?.car?.slot||initialState.car.slot)
     },
     history:Array.isArray(saved?.history)?saved.history:[],
@@ -1376,7 +1374,7 @@ function createSlot(slotId,label,x,y,w,h,isSmall=false){
 
   if(state.car.status==='available' && state.car.slot===slotId){
     el.classList.add('car-here');
-    el.title=`${state.car.name} / ${state.car.plate}`;
+    el.title=`${state.car.name}`;
   }
   if(returnMode){
     el.classList.add('return-pickable');
@@ -1551,7 +1549,6 @@ function renderCar(){
     <div class="car-title">
       <div>
         <div class="car-name">${escapeHtml(c.name)}</div>
-        <div class="car-number">${escapeHtml(c.plate)}</div>
       </div>
       <div class="status ${available?'available':'inuse'}">${available?'사용 가능':'사용 중'}</div>
     </div>
