@@ -930,6 +930,7 @@ const MAX_PHOTO_EDGE = 1200;
 const MIN_PHOTO_EDGE = 640;
 const PHOTO_START_QUALITY = 0.72;
 const PHOTO_MIN_QUALITY = 0.42;
+const PHOTO_RETENTION_COUNT = 10; // 최근 반납 사진 10개만 유지
 
 /*
   사진 기준 배치
@@ -1112,6 +1113,11 @@ async function initializeFirebaseSync(){
 
     firebaseReady=true;
     setFirebaseStatus('online','Firebase 연결됨');
+
+    // 기존 데이터에도 10개 초과 사진이 있으면 접속 시 한 번 자동 정리
+    if(await pruneOldPhotos()){
+      await saveState();
+    }
 
     firebaseUnsubscribe=FIREBASE_STATE_DOC.onSnapshot(snapshot=>{
       if(!snapshot.exists || !snapshot.data()?.state) return;
@@ -1662,7 +1668,8 @@ document.getElementById('saveTripLogBtn').addEventListener('click',async()=>{
     createdAt:new Date().toISOString()
   });
 
-  saveState();
+  await pruneOldPhotos();
+  await saveState();
   hideModal('tripLogModal');
   returnMode=false;
   selectedReturnSlot='';
@@ -2005,6 +2012,59 @@ async function readPhotoLocal(key){
     req.onsuccess=()=>resolve(req.result?.blob||null);
     req.onerror=()=>reject(req.error);
   });
+}
+
+async function deletePhotoLocal(key){
+  try{
+    const db=await openDB();
+    const tx=db.transaction(DB_STORE,'readwrite');
+    tx.objectStore(DB_STORE).delete(key);
+    return await new Promise((resolve,reject)=>{
+      tx.oncomplete=()=>resolve(true);
+      tx.onerror=()=>reject(tx.error);
+    });
+  }catch(error){
+    console.warn('사진 로컬 삭제 실패:',key,error);
+    return false;
+  }
+}
+
+async function deletePhotoData(key){
+  if(!key) return true;
+
+  // Firebase 연결이 끊긴 상태에서는 photoKey를 유지하여 다음 연결 시 다시 정리
+  if(!firebaseReady) return false;
+
+  try{
+    await FIREBASE_PHOTO_COLLECTION.doc(key).delete();
+    // 원격 삭제가 확인된 뒤 현재 기기의 IndexedDB 백업도 함께 삭제
+    await deletePhotoLocal(key);
+    return true;
+  }catch(error){
+    console.warn('Firestore 오래된 사진 삭제 실패:',key,error);
+    return false;
+  }
+}
+
+async function pruneOldPhotos(){
+  const photoHistory=state.history.filter(item=>item?.photoKey);
+  if(photoHistory.length<=PHOTO_RETENTION_COUNT) return false;
+
+  const staleItems=photoHistory.slice(PHOTO_RETENTION_COUNT);
+  let stateChanged=false;
+
+  for(const item of staleItems){
+    const photoKey=item.photoKey;
+    const deleted=await deletePhotoData(photoKey);
+    if(deleted){
+      // 사용 이력 텍스트는 유지하고 사진 연결 정보만 제거
+      delete item.photoKey;
+      stateChanged=true;
+    }
+  }
+
+  if(stateChanged) saveLocalState();
+  return stateChanged;
 }
 
 async function fileToFirestoreBlob(file){
