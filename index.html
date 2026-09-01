@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="회사 차량의 예약, 사용 상태, 반납 위치와 사진을 관리하는 웹 앱">
+<meta name="theme-color" content="#2457d6">
+<title>회사 차량 주차 관리</title>
+<style>
+:root{
+  --bg:#f4f7fb;
+  --panel:#fff;
+  --text:#172033;
+  --muted:#6f7b8f;
+  --line:#cfd7e3;
+  --line-dark:#647081;
+  --primary:#2457d6;
+  --primary-soft:#eaf0ff;
+  --good:#168653;
+  --good-soft:#e8f7ef;
+  --warn:#a86800;
+  --warn-soft:#fff1d2;
+  --select:#6f42c1;
+  --select-soft:#eee7ff;
+  --small:#fff7d6;
+  --small-border:#d9b94e;
+  --shadow:0 10px 28px rgba(32,49,75,.08);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family:"Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
+:focus-visible{outline:3px solid #8db2ff;outline-offset:2px}
+.topbar{
+  position:sticky;top:0;z-index:50;
+  display:flex;justify-content:space-between;align-items:center;gap:14px;
+  padding:15px 22px;background:rgba(255,255,255,.97);
+  border-bottom:1px solid #e0e6ee;backdrop-filter:blur(8px);
+}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{
+  width:38px;height:38px;border-radius:10px;background:var(--primary);
+  color:#fff;display:grid;place-items:center;font-size:13px;font-weight:900;
+}
+.brand h1{margin:0;font-size:18px}
+.brand p{margin:3px 0 0;color:var(--muted);font-size:12px}
+.header-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  border:1px solid var(--line);background:#fff;color:var(--text);
+  border-radius:10px;padding:9px 12px;font-weight:800;font-size:13px;
+}
+.btn:hover{background:#f7f9fc}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.ghost-danger{color:#bd3434;border-color:#efc0c0}
+.layout{
+  display:grid;grid-template-columns:minmax(760px,1fr) 390px;
+  gap:18px;max-width:1580px;margin:0 auto;padding:18px;
+}
+.panel{
+  background:var(--panel);border:1px solid #dfe5ed;border-radius:16px;
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.panel-head{
+  padding:15px 18px 12px;border-bottom:1px solid #e7ebf1;
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+}
+.panel-head h2{font-size:16px;margin:0}
+.panel-head .sub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45}
+.map-scroll{overflow:auto;padding:16px}
+.parking-map{
+  width:1040px;height:1480px;position:relative;margin:0 auto;
+  border:1px dashed #cbd4e0;border-radius:14px;background:#fff;
+}
+.block-label{
+  position:absolute;font-size:12px;font-weight:900;color:#8a94a5;
+}
+.slot{
+  position:absolute;border:1px solid #4f5866;background:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;color:#18202c;user-select:none;
+  transition:background-color .1s ease,outline-color .1s ease;
+  appearance:none;padding:0;border-radius:0;
+}
+.slot:hover{z-index:8;outline:2px solid var(--primary)}
+.slot.small{
+  background:var(--small);border-color:var(--small-border);
+}
+.slot.car-here{
+  background:var(--primary-soft);border-color:#7fa4ff;color:#1642a8;
+}
+.slot.car-here::after{
+  content:"●";position:absolute;right:4px;top:2px;font-size:8px;
+}
+.slot.return-pickable{background:#faf8ff}
+.slot.return-pickable:hover{background:var(--select-soft);outline-color:var(--select)}
+.slot.return-selected{
+  background:var(--select-soft)!important;border-color:#8a6bd1!important;
+  color:#4d2598!important;outline:2px solid #8a6bd1;
+}
+.facility{
+  position:absolute;border:1px solid #4f5866;background:#f6f8fb;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:14px;
+}
+.gate{background:#f0f4fa}
+.legend{
+  padding:0 18px 16px;display:flex;gap:14px;flex-wrap:wrap;
+  color:var(--muted);font-size:12px;
+}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;border:1px solid #999;display:inline-block;border-radius:3px}
+.legend .normal{background:#fff}
+.legend .small{background:var(--small);border-color:var(--small-border)}
+.legend .occupied{background:var(--primary-soft);border-color:#7fa4ff}
+.legend .selected{background:var(--select-soft);border-color:#8a6bd1}
+.side{display:flex;flex-direction:column;gap:18px}
+.car-card{padding:18px}
+.car-title{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.car-name{font-size:20px;font-weight:900}
+.car-number{color:var(--muted);font-size:12px;margin-top:4px}
+.status{
+  padding:7px 10px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap;
+}
+.status.available{background:var(--good-soft);color:var(--good)}
+.status.inuse{background:var(--warn-soft);color:var(--warn)}
+.info-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;
+}
+.info-box{
+  border:1px solid #e2e7ef;border-radius:11px;padding:11px;background:#fafbfd;
+}
+.info-box .label{font-size:11px;color:var(--muted);font-weight:800}
+.info-box .value{font-size:14px;font-weight:900;margin-top:5px;word-break:break-word}
+.action-row{display:flex;gap:8px;margin-top:15px}
+.action-row .btn{flex:1}
+.return-panel{padding:18px}
+.return-help{
+  background:#f7f4ff;border:1px solid #ddd1ff;color:#563a91;
+  border-radius:11px;padding:11px 12px;font-size:12px;line-height:1.55;margin-bottom:14px;
+}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.field label{font-size:12px;font-weight:900;color:#4e5969}
+.field input{
+  border:1px solid #cfd7e3;border-radius:10px;padding:10px 11px;background:#fff;
+}
+.selected-slot{
+  padding:12px;border:1px solid #d7ccf4;background:#faf8ff;border-radius:10px;
+  font-size:18px;font-weight:900;color:#5a32aa;text-align:center;
+}
+.photo-box{
+  border:1px dashed #b8c3d0;border-radius:12px;background:#fafbfd;
+  min-height:180px;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;position:relative;cursor:pointer;
+}
+.photo-box input{display:none}
+.photo-box img{display:none;width:100%;height:210px;object-fit:cover}
+.photo-box.has img{display:block}
+.photo-box.has .photo-prompt{display:none}
+.photo-prompt{text-align:center;color:var(--muted);font-size:12px;padding:15px}
+.photo-prompt strong{display:block;color:var(--text);font-size:14px;margin-bottom:5px}
+.history-list{max-height:440px;overflow:auto;padding:4px 18px 12px}
+.history-item{
+  padding:12px 0;border-bottom:1px solid #edf0f4;
+}
+.history-item:last-child{border-bottom:0}
+.history-top{display:flex;justify-content:space-between;gap:10px}
+.history-title{font-size:13px;font-weight:900}
+.history-time{font-size:11px;color:var(--muted)}
+.history-meta{font-size:12px;color:var(--muted);line-height:1.55;margin-top:5px}
+.photo-link{
+  border:0;background:none;color:var(--primary);padding:0;font-size:12px;font-weight:800;
+  text-decoration:underline;
+}
+.empty-history{padding:26px 0;text-align:center;color:var(--muted);font-size:13px}
+.reservation-list{max-height:360px;overflow:auto;padding:4px 18px 12px}
+.reservation-item{padding:13px 0;border-bottom:1px solid #edf0f4}
+.reservation-item:last-child{border-bottom:0}
+.reservation-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.reservation-name{font-size:14px;font-weight:900}
+.reservation-badge{
+  flex:none;padding:4px 7px;border-radius:999px;background:var(--primary-soft);
+  color:var(--primary);font-size:11px;font-weight:900;
+}
+.reservation-badge.active{background:var(--good-soft);color:var(--good)}
+.reservation-time{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.5}
+.reservation-actions{display:flex;justify-content:flex-end;margin-top:7px}
+.reservation-cancel{
+  border:0;background:none;color:#bd3434;padding:2px 0;font-size:11px;font-weight:800;
+  text-decoration:underline;
+}
+.modal-bg{
+  position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:100;
+  display:none;align-items:center;justify-content:center;padding:18px;
+}
+.modal-bg.show{display:flex}
+.modal{
+  width:min(520px,100%);background:#fff;border-radius:16px;box-shadow:0 25px 70px rgba(0,0,0,.26);
+}
+.modal-head{
+  padding:16px 18px;border-bottom:1px solid #e4e9f0;display:flex;justify-content:space-between;align-items:center;
+}
+.modal-head h3{margin:0;font-size:17px}
+.modal-close{border:0;background:none;font-size:24px;color:#758096}
+.modal-body{padding:18px}
+.modal-actions{padding:14px 18px;border-top:1px solid #e4e9f0;display:flex;justify-content:flex-end;gap:8px}
+.photo-view{
+  width:min(760px,95vw);max-height:88vh;
+}
+.photo-view .modal-body{text-align:center}
+.photo-view img{max-width:100%;max-height:70vh;border-radius:10px}
+.toast{
+  display:none;position:fixed;right:20px;bottom:20px;z-index:200;
+  background:#172033;color:#fff;padding:11px 14px;border-radius:10px;font-size:13px;
+  box-shadow:var(--shadow);
+}
+.toast.show{display:block}
+.mode-banner{
+  padding:10px 18px;background:#f7f4ff;border-bottom:1px solid #e0d7f5;
+  color:#563a91;font-size:12px;font-weight:800;display:none;
+}
+.mode-banner.show{display:block}
+@media(max-width:1180px){
+  .layout{grid-template-columns:1fr}
+}
+@media(max-width:720px){
+  .topbar{align-items:flex-start;flex-direction:column}
+  .layout{padding:10px}
+  .info-grid{grid-template-columns:1fr}
+  .panel,.modal{border-radius:12px}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{transition:none!important}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">CAR</div>
+    <div>
+      <h1>회사 차량 주차 관리</h1>
+      <p>회사차량 1대 · 예약 · 사용 여부 · 반납 위치 · 운전석 내부 사진 관리</p>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn" id="editCarBtn">차량 정보 수정</button>
+    <button class="btn" id="exportBtn">이력 JSON</button>
+    <button class="btn ghost-danger" id="resetBtn">초기화</button>
+  </div>
+</header>
+
+<main class="layout" aria-label="회사 차량 관리">
+  <section class="panel" aria-labelledby="parkingTitle">
+    <div class="panel-head">
+      <div>
+        <h2 id="parkingTitle">주차장 배치도</h2>
+        <div class="sub">실제 배치를 기준으로 구성했습니다. 하단 1~24번과 좌측 ‘경차 1~8’은 경차 주차면입니다.</div>
+      </div>
+    </div>
+    <div class="mode-banner" id="modeBanner" role="status">반납 위치 선택 중입니다. 배치도에서 주차면을 클릭해 주세요.</div>
+    <div class="map-scroll">
+      <div class="parking-map" id="parkingMap" aria-label="주차면 배치도"></div>
+    </div>
+    <div class="legend">
+      <span><i class="normal"></i> 일반 주차면</span>
+      <span><i class="small"></i> 경차 주차면</span>
+      <span><i class="occupied"></i> 회사차량 위치</span>
+      <span><i class="selected"></i> 반납 선택 위치</span>
+    </div>
+  </section>
+
+  <aside class="side">
+    <section class="panel" aria-labelledby="carTitle">
+      <div class="panel-head">
+        <div>
+          <h2 id="carTitle">회사차량</h2>
+          <div class="sub">차량은 1대만 관리하며 상태는 사용 가능/사용 중으로만 구분합니다.</div>
+        </div>
+      </div>
+      <div class="car-card" id="carCard"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="reservationTitle">
+      <div class="panel-head">
+        <div>
+          <h2 id="reservationTitle">차량 예약</h2>
+          <div class="sub">예약자와 사용 예정 시간을 등록합니다.</div>
+        </div>
+        <button class="btn primary" id="openReservationBtn">예약 추가</button>
+      </div>
+      <div class="reservation-list" id="reservationList"></div>
+    </section>
+
+    <section class="panel" id="returnPanel" aria-labelledby="returnTitle" hidden>
+      <div class="panel-head">
+        <div>
+          <h2 id="returnTitle">반납 등록</h2>
+          <div class="sub">이름, 주차 위치, 운전석 내부 사진 1장을 등록합니다.</div>
+        </div>
+      </div>
+      <div class="return-panel">
+        <div class="return-help">배치도에서 실제 반납한 주차면을 클릭하면 아래 위치에 자동 등록됩니다.</div>
+        <div class="field">
+          <label for="returnName">반납자 이름</label>
+          <input id="returnName" placeholder="이름 입력" maxlength="50" autocomplete="name">
+        </div>
+        <div class="field">
+          <span class="sr-only" id="returnSlotLabel">반납 위치</span>
+          <div class="selected-slot" id="selectedSlotText" role="status" aria-labelledby="returnSlotLabel">선택되지 않음</div>
+        </div>
+        <div class="field">
+          <label for="returnPhoto">운전석쪽 내부 사진 1장</label>
+          <label class="photo-box" id="returnPhotoBox" for="returnPhoto">
+            <img id="returnPhotoPreview" alt="운전석 내부 사진">
+            <div class="photo-prompt">
+              <strong>운전석쪽 내부 사진</strong>
+              클릭하여 사진을 선택하거나 촬영
+            </div>
+            <input type="file" id="returnPhoto" accept="image/*" capture="environment">
+          </label>
+        </div>
+        <div class="action-row">
+          <button class="btn" id="cancelReturnBtn">취소</button>
+          <button class="btn primary" id="completeReturnBtn">반납 완료</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="historyTitle">
+      <div class="panel-head">
+        <div>
+          <h2 id="historyTitle">최근 사용 이력</h2>
+          <div class="sub">차량 사용/반납 시간과 등록 위치를 확인합니다.</div>
+        </div>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </section>
+  </aside>
+</main>
+
+<div class="modal-bg" id="useModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="useModalTitle">
+    <div class="modal-head">
+      <h3 id="useModalTitle">차량 사용</h3>
+      <button class="modal-close" data-close="useModal" aria-label="차량 사용 창 닫기">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field" style="margin:0">
+        <label for="useName">사용자 이름</label>
+        <input id="useName" placeholder="이름 입력" maxlength="50" autocomplete="name">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" data-close="useModal">취소</button>
+      <button class="btn primary" id="startUseBtn">사용 시작</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="reservationModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reservationModalTitle">
+    <div class="modal-head">
+      <h3 id="reservationModalTitle">차량 예약 추가</h3>
+      <button class="modal-close" data-close="reservationModal" aria-label="차량 예약 창 닫기">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="reservationName">예약자 이름</label>
+        <input id="reservationName" placeholder="이름 입력" maxlength="50" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="reservationStart">사용 시작 예정</label>
+        <input type="datetime-local" id="reservationStart">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label for="reservationEnd">사용 종료 예정</label>
+        <input type="datetime-local" id="reservationEnd">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" data-close="reservationModal">취소</button>
+      <button class="btn primary" id="saveReservationBtn">예약 저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="editCarModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editCarModalTitle">
+    <div class="modal-head">
+      <h3 id="editCarModalTitle">차량 정보 수정</h3>
+      <button class="modal-close" data-close="editCarModal" aria-label="차량 정보 수정 창 닫기">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="editCarName">차량명</label>
+        <input id="editCarName" placeholder="예: 쏘나타" maxlength="50">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label for="editCarPlate">차량번호</label>
+        <input id="editCarPlate" placeholder="예: 12가 3456" maxlength="20">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" data-close="editCarModal">취소</button>
+      <button class="btn primary" id="saveCarBtn">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="photoModal" aria-hidden="true">
+  <div class="modal photo-view" role="dialog" aria-modal="true" aria-labelledby="photoModalTitle">
+    <div class="modal-head">
+      <h3 id="photoModalTitle">반납 사진</h3>
+      <button class="modal-close" data-close="photoModal" aria-label="반납 사진 창 닫기">×</button>
+    </div>
+    <div class="modal-body">
+      <img id="historyPhoto" alt="반납 운전석 내부 사진">
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const STORAGE_KEY = 'companyCarSingleProto_v1';
+const DB_NAME = 'CompanyCarSinglePhotoDB';
+const DB_STORE = 'photos';
+const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
+const MAX_PHOTO_EDGE = 1600;
+
+/*
+  사진 기준 배치
+  - 상단: 1~14 + 사무실 + 입구 + 출구
+  - A/B: 15행 2열
+  - C: 14행 2열, A/B보다 위쪽 1행만큼 내려가며 하단 정렬
+  - D/E/F: 15행 2열
+  - G/H: 15행 2열
+  - I: 13행 2열, G/H와 상단 정렬
+  - 좌측: 1~6 일반 주차면, 경차1~8, 하단 1~15 일반 주차면
+  - 최하단: 경차 1~24 + 출구 + 입구
+*/
+const groups = [
+  {id:'TOP', kind:'row', count:14, x:168, y:24, w:36, h:74, small:false, prefix:'상단'},
+  {id:'A', kind:'doubleCol', count:15, x:238, y:122, w:81, h:24, prefix:'A'},
+  {id:'B', kind:'doubleCol', count:15, x:479, y:122, w:81, h:24, prefix:'B'},
+  {id:'C', kind:'doubleCol', count:14, x:720, y:146, w:81, h:24, prefix:'C'},
+  {id:'D', kind:'doubleCol', count:15, x:238, y:539, w:81, h:24, prefix:'D'},
+  {id:'E', kind:'doubleCol', count:15, x:479, y:539, w:81, h:24, prefix:'E'},
+  {id:'F', kind:'doubleCol', count:15, x:720, y:539, w:81, h:24, prefix:'F'},
+  {id:'G', kind:'doubleCol', count:15, x:238, y:955, w:81, h:24, prefix:'G'},
+  {id:'H', kind:'doubleCol', count:15, x:479, y:955, w:81, h:24, prefix:'H'},
+  {id:'I', kind:'doubleCol', count:13, x:720, y:955, w:81, h:24, prefix:'I'},
+  {id:'LEFT6', kind:'singleCol', count:6, x:80, y:465, w:30, h:57, prefix:'좌측상단'},
+  {id:'LEFT15', kind:'singleCol', count:15, x:80, y:955, w:80, h:24, prefix:'좌측하단'},
+  {id:'SMALL8', kind:'smallLabels', count:8, x:82, y:807, w:61, h:19, prefix:'경차'},
+  {id:'BOTTOM', kind:'row', count:24, x:80, y:1370, w:30, h:62, small:true, prefix:'하단경차'}
+];
+
+const facilities = [
+  {text:'사무실',x:672,y:24,w:128,h:74,cls:''},
+  {text:'입구',x:800,y:24,w:80,h:74,cls:'gate'},
+  {text:'출구',x:880,y:24,w:82,h:74,cls:'gate'},
+  {text:'출구',x:800,y:1370,w:81,h:74,cls:'gate'},
+  {text:'입구',x:881,y:1370,w:81,h:74,cls:'gate'}
+];
+
+const initialState = {
+  car:{
+    name:'회사차량',
+    plate:'차량번호 미등록',
+    status:'available',
+    slot:'A01-L',
+    currentUser:'',
+    useStartedAt:''
+  },
+  history:[],
+  reservations:[]
+};
+
+let state = loadState();
+let returnMode = false;
+let selectedReturnSlot = '';
+let returnPhotoFile = null;
+let returnPreviewUrl = '';
+let lastFocusedElement = null;
+let dbPromise = null;
+
+function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
+function loadState(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw) return clone(initialState);
+    const saved=JSON.parse(raw);
+    return {
+      car:{...initialState.car,...(saved.car||{})},
+      history:Array.isArray(saved.history)?saved.history:[],
+      reservations:Array.isArray(saved.reservations)?saved.reservations:[]
+    };
+  }catch(e){
+    console.warn('저장 데이터를 읽지 못해 초기값을 사용합니다.',e);
+    return clone(initialState);
+  }
+}
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); }
+  catch(e){ console.error(e); toast('브라우저 저장 공간이 부족합니다.'); }
+}
+
+function createSlot(slotId,label,x,y,w,h,isSmall=false){
+  const el=document.createElement('button');
+  el.type='button';
+  el.className='slot'+(isSmall?' small':'');
+  el.dataset.slot=slotId;
+  el.textContent=label;
+  el.setAttribute('aria-label',`${slotId} 주차면`);
+  el.style.left=x+'px';
+  el.style.top=y+'px';
+  el.style.width=w+'px';
+  el.style.height=h+'px';
+
+  if(state.car.status==='available' && state.car.slot===slotId){
+    el.classList.add('car-here');
+    el.title=`${state.car.name} / ${state.car.plate}`;
+  }
+  if(returnMode){
+    el.classList.add('return-pickable');
+    if(selectedReturnSlot===slotId){
+      el.classList.add('return-selected');
+      el.setAttribute('aria-pressed','true');
+    }else{
+      el.setAttribute('aria-pressed','false');
+    }
+  }
+  return el;
+}
+
+function renderMap(){
+  const map=document.getElementById('parkingMap');
+  const fragment=document.createDocumentFragment();
+
+  groups.forEach(g=>{
+    if(g.kind==='row'){
+      for(let i=1;i<=g.count;i++){
+        const id=`${g.prefix}${String(i).padStart(2,'0')}`;
+        fragment.appendChild(createSlot(id,i,g.x+(i-1)*g.w,g.y,g.w,g.h,!!g.small));
+      }
+    }
+    if(g.kind==='doubleCol'){
+      const label=document.createElement('div');
+      label.className='block-label';label.textContent=g.id+'열';
+      label.style.left=g.x+'px';label.style.top=(g.y-18)+'px';
+      fragment.appendChild(label);
+
+      for(let i=1;i<=g.count;i++){
+        const y=g.y+(i-1)*g.h;
+        fragment.appendChild(createSlot(`${g.prefix}${String(i).padStart(2,'0')}-L`,i,g.x,y,g.w,g.h,false));
+        fragment.appendChild(createSlot(`${g.prefix}${String(i).padStart(2,'0')}-R`,i,g.x+g.w,y,g.w,g.h,false));
+      }
+    }
+    if(g.kind==='singleCol'){
+      for(let i=1;i<=g.count;i++){
+        const id=`${g.prefix}${String(i).padStart(2,'0')}`;
+        fragment.appendChild(createSlot(id,i,g.x,g.y+(i-1)*g.h,g.w,g.h,false));
+      }
+    }
+    if(g.kind==='smallLabels'){
+      for(let i=1;i<=g.count;i++){
+        const id=`${g.prefix}${i}`;
+        fragment.appendChild(createSlot(id,`경차 ${i}`,g.x,g.y+(i-1)*g.h,g.w,g.h,true));
+      }
+    }
+  });
+
+  facilities.forEach(f=>{
+    const el=document.createElement('div');
+    el.className='facility '+(f.cls||'');
+    el.textContent=f.text;
+    Object.assign(el.style,{left:f.x+'px',top:f.y+'px',width:f.w+'px',height:f.h+'px'});
+    fragment.appendChild(el);
+  });
+  map.replaceChildren(fragment);
+}
+
+document.getElementById('parkingMap').addEventListener('click',e=>{
+  const slot=e.target.closest('[data-slot]');
+  if(!slot) return;
+  const slotId=slot.dataset.slot;
+  if(returnMode){
+    document.querySelector('.return-selected')?.classList.remove('return-selected');
+    document.querySelectorAll('[data-slot][aria-pressed="true"]').forEach(el=>el.setAttribute('aria-pressed','false'));
+    selectedReturnSlot=slotId;
+    slot.classList.add('return-selected');
+    slot.setAttribute('aria-pressed','true');
+    document.getElementById('selectedSlotText').textContent=slotId;
+    return;
+  }
+  toast(state.car.status==='available' && state.car.slot===slotId
+    ? `${slotId} · ${state.car.name} 주차 위치`
+    : `${slotId} 주차면`);
+});
+
+function getRelevantReservations(){
+  const now=Date.now();
+  return state.reservations
+    .filter(item=>Number.isFinite(new Date(item.startAt).getTime()) && new Date(item.endAt).getTime()>now)
+    .sort((a,b)=>new Date(a.startAt)-new Date(b.startAt));
+}
+
+function getActiveReservation(at=Date.now()){
+  return state.reservations.find(item=>{
+    const start=new Date(item.startAt).getTime();
+    const end=new Date(item.endAt).getTime();
+    return start<=at && at<end;
+  })||null;
+}
+
+function renderReservations(){
+  const list=document.getElementById('reservationList');
+  const reservations=getRelevantReservations();
+  if(!reservations.length){
+    list.innerHTML='<div class="empty-history">예정된 예약이 없습니다.</div>';
+    return;
+  }
+  const now=Date.now();
+  list.innerHTML=reservations.map(item=>{
+    const active=new Date(item.startAt).getTime()<=now;
+    return `
+      <div class="reservation-item">
+        <div class="reservation-top">
+          <div class="reservation-name">${escapeHtml(item.name)}</div>
+          <span class="reservation-badge ${active?'active':''}">${active?'예약 시간':'예정'}</span>
+        </div>
+        <div class="reservation-time">${escapeHtml(formatDateTime(item.startAt))}<br>~ ${escapeHtml(formatDateTime(item.endAt))}</div>
+        <div class="reservation-actions">
+          <button class="reservation-cancel" data-cancel-reservation="${escapeHtml(item.id)}">예약 취소</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderCar(){
+  const c=state.car;
+  const card=document.getElementById('carCard');
+  const available=c.status==='available';
+  const reservation=getActiveReservation()||getRelevantReservations()[0]||null;
+  const reservationActive=reservation && new Date(reservation.startAt).getTime()<=Date.now();
+  card.innerHTML=`
+    <div class="car-title">
+      <div>
+        <div class="car-name">${escapeHtml(c.name)}</div>
+        <div class="car-number">${escapeHtml(c.plate)}</div>
+      </div>
+      <div class="status ${available?'available':'inuse'}">${available?'사용 가능':'사용 중'}</div>
+    </div>
+    <div class="info-grid">
+      <div class="info-box">
+        <div class="label">${available?'현재 주차 위치':'사용자'}</div>
+        <div class="value">${escapeHtml(available?(c.slot||'미등록'):(c.currentUser||'-'))}</div>
+      </div>
+      <div class="info-box">
+        <div class="label">${available?'상태':'사용 시작'}</div>
+        <div class="value">${available?'즉시 사용 가능':escapeHtml(c.useStartedAt||'-')}</div>
+      </div>
+      ${reservation?`
+        <div class="info-box">
+          <div class="label">${reservationActive?'현재 예약':'다음 예약'}</div>
+          <div class="value">${escapeHtml(reservation.name)} · ${escapeHtml(formatDateTime(reservation.startAt))}</div>
+        </div>
+      `:''}
+    </div>
+    <div class="action-row">
+      ${available
+        ? '<button class="btn primary" id="useCarAction">차량 사용</button>'
+        : '<button class="btn primary" id="returnCarAction">반납 등록</button>'}
+    </div>
+  `;
+  document.getElementById(available?'useCarAction':'returnCarAction').addEventListener('click',()=>{
+    if(available) openUseModal();
+    else startReturnMode();
+  });
+}
+
+function renderHistory(){
+  const list=document.getElementById('historyList');
+  if(!state.history.length){
+    list.innerHTML='<div class="empty-history">아직 사용 이력이 없습니다.</div>';
+    return;
+  }
+  list.innerHTML=state.history.slice(0,30).map(h=>`
+    <div class="history-item">
+      <div class="history-top">
+        <div class="history-title">${escapeHtml(h.action)} · ${escapeHtml(h.name)}</div>
+        <div class="history-time">${escapeHtml(h.time)}</div>
+      </div>
+      <div class="history-meta">
+        ${h.action==='사용'
+          ? `출차 위치 ${escapeHtml(h.fromSlot||'-')}`
+          : `반납 위치 ${escapeHtml(h.slot||'-')}${h.photoKey?` · <button class="photo-link" data-photo="${escapeHtml(h.photoKey)}">사진 보기</button>`:''}`}
+      </div>
+    </div>
+  `).join('');
+  list.querySelectorAll('[data-photo]').forEach(btn=>{
+    btn.addEventListener('click',()=>showHistoryPhoto(btn.dataset.photo));
+  });
+}
+
+function renderAll(){
+  renderMap();
+  renderCar();
+  renderReservations();
+  renderHistory();
+  document.getElementById('modeBanner').classList.toggle('show',returnMode);
+  document.getElementById('returnPanel').hidden=!returnMode;
+}
+
+function openUseModal(){
+  document.getElementById('useName').value=getActiveReservation()?.name||'';
+  showModal('useModal');
+  setTimeout(()=>document.getElementById('useName').focus(),50);
+}
+
+document.getElementById('startUseBtn').addEventListener('click',()=>{
+  const name=document.getElementById('useName').value.trim();
+  if(!name){ toast('사용자 이름을 입력해 주세요.'); return; }
+  const activeReservation=getActiveReservation();
+  if(activeReservation && normalizeName(activeReservation.name)!==normalizeName(name)){
+    toast(`현재 ${activeReservation.name}님의 예약 시간입니다.`);
+    return;
+  }
+
+  const oldSlot=state.car.slot;
+  const time=nowText();
+  state.car.status='inuse';
+  state.car.currentUser=name;
+  state.car.useStartedAt=time;
+  state.car.slot='';
+
+  state.history.unshift({
+    id:'h'+Date.now(),
+    action:'사용',
+    name,
+    time,
+    fromSlot:oldSlot
+  });
+
+  saveState();
+  hideModal('useModal');
+  renderAll();
+  toast(`${name}님 차량 사용을 시작했습니다.`);
+});
+
+function startReturnMode(){
+  returnMode=true;
+  selectedReturnSlot='';
+  resetPhotoInput();
+  document.getElementById('returnName').value=state.car.currentUser||'';
+  document.getElementById('selectedSlotText').textContent='선택되지 않음';
+  renderAll();
+  setTimeout(()=>document.getElementById('returnName').focus(),50);
+}
+
+document.getElementById('cancelReturnBtn').addEventListener('click',()=>{
+  returnMode=false;
+  selectedReturnSlot='';
+  resetPhotoInput();
+  renderAll();
+});
+
+document.getElementById('returnPhoto').addEventListener('change',async e=>{
+  const file=e.target.files?.[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){
+    toast('이미지 파일만 등록할 수 있습니다.');
+    resetPhotoInput();
+    return;
+  }
+  if(file.size>MAX_PHOTO_BYTES){
+    toast('사진은 15MB 이하로 선택해 주세요.');
+    resetPhotoInput();
+    return;
+  }
+  try{
+    returnPhotoFile=await optimizePhoto(file);
+    if(returnPreviewUrl) URL.revokeObjectURL(returnPreviewUrl);
+    returnPreviewUrl=URL.createObjectURL(returnPhotoFile);
+    document.getElementById('returnPhotoPreview').src=returnPreviewUrl;
+    document.getElementById('returnPhotoBox').classList.add('has');
+  }catch(error){
+    console.error(error);
+    toast('사진을 처리하지 못했습니다. 다른 사진을 선택해 주세요.');
+    resetPhotoInput();
+  }
+});
+
+document.getElementById('completeReturnBtn').addEventListener('click',async()=>{
+  const name=document.getElementById('returnName').value.trim();
+  if(!name){ toast('반납자 이름을 입력해 주세요.'); return; }
+  if(!selectedReturnSlot){ toast('배치도에서 반납 위치를 선택해 주세요.'); return; }
+  if(!returnPhotoFile){ toast('운전석쪽 내부 사진 1장을 등록해 주세요.'); return; }
+
+  const completeButton=document.getElementById('completeReturnBtn');
+  completeButton.disabled=true;
+  const historyId='h'+Date.now();
+  const photoKey=historyId+'-driver';
+  try{
+    await savePhoto(photoKey,returnPhotoFile);
+  }catch(e){
+    console.error(e);
+    toast('사진 저장 중 오류가 발생했습니다.');
+    completeButton.disabled=false;
+    return;
+  }
+
+  const time=nowText();
+  state.car.status='available';
+  state.car.slot=selectedReturnSlot;
+  state.car.currentUser='';
+  state.car.useStartedAt='';
+
+  state.history.unshift({
+    id:historyId,
+    action:'반납',
+    name,
+    time,
+    slot:selectedReturnSlot,
+    photoKey
+  });
+
+  saveState();
+  returnMode=false;
+  selectedReturnSlot='';
+  resetPhotoInput();
+  completeButton.disabled=false;
+  renderAll();
+  toast(`${name}님 반납 등록이 완료되었습니다.`);
+});
+
+document.getElementById('openReservationBtn').addEventListener('click',()=>{
+  const start=nextHalfHour(new Date());
+  const end=new Date(start.getTime()+60*60*1000);
+  const minimum=toDateTimeInput(new Date());
+  document.getElementById('reservationName').value='';
+  document.getElementById('reservationStart').value=toDateTimeInput(start);
+  document.getElementById('reservationStart').min=minimum;
+  document.getElementById('reservationEnd').value=toDateTimeInput(end);
+  document.getElementById('reservationEnd').min=minimum;
+  showModal('reservationModal');
+  setTimeout(()=>document.getElementById('reservationName').focus(),50);
+});
+
+document.getElementById('saveReservationBtn').addEventListener('click',()=>{
+  const name=document.getElementById('reservationName').value.trim();
+  const startAt=document.getElementById('reservationStart').value;
+  const endAt=document.getElementById('reservationEnd').value;
+  const startTime=new Date(startAt).getTime();
+  const endTime=new Date(endAt).getTime();
+  if(!name){ toast('예약자 이름을 입력해 주세요.'); return; }
+  if(!Number.isFinite(startTime)||!Number.isFinite(endTime)){
+    toast('사용 시작과 종료 시간을 입력해 주세요.');
+    return;
+  }
+  if(startTime>=endTime){ toast('종료 시간은 시작 시간보다 늦어야 합니다.'); return; }
+  if(endTime<=Date.now()){ toast('이미 지난 시간은 예약할 수 없습니다.'); return; }
+  const conflict=state.reservations.find(item=>{
+    const existingStart=new Date(item.startAt).getTime();
+    const existingEnd=new Date(item.endAt).getTime();
+    return startTime<existingEnd && endTime>existingStart;
+  });
+  if(conflict){
+    toast(`${conflict.name}님의 기존 예약과 시간이 겹칩니다.`);
+    return;
+  }
+  state.reservations.push({
+    id:'r'+Date.now(),
+    name,
+    startAt,
+    endAt,
+    createdAt:new Date().toISOString()
+  });
+  saveState();
+  hideModal('reservationModal');
+  renderCar();
+  renderReservations();
+  toast(`${name}님의 차량 예약을 저장했습니다.`);
+});
+
+document.getElementById('reservationList').addEventListener('click',e=>{
+  const button=e.target.closest('[data-cancel-reservation]');
+  if(!button) return;
+  const reservation=state.reservations.find(item=>item.id===button.dataset.cancelReservation);
+  if(!reservation) return;
+  if(!confirm(`${reservation.name}님의 예약을 취소하시겠습니까?`)) return;
+  state.reservations=state.reservations.filter(item=>item.id!==reservation.id);
+  saveState();
+  renderCar();
+  renderReservations();
+  toast('예약이 취소되었습니다.');
+});
+
+document.getElementById('editCarBtn').addEventListener('click',()=>{
+  document.getElementById('editCarName').value=state.car.name;
+  document.getElementById('editCarPlate').value=state.car.plate==='차량번호 미등록'?'':state.car.plate;
+  showModal('editCarModal');
+});
+
+document.getElementById('saveCarBtn').addEventListener('click',()=>{
+  const name=document.getElementById('editCarName').value.trim();
+  const plate=document.getElementById('editCarPlate').value.trim();
+  if(!name){ toast('차량명을 입력해 주세요.'); return; }
+  state.car.name=name;
+  state.car.plate=plate||'차량번호 미등록';
+  saveState();hideModal('editCarModal');renderCar();toast('차량 정보를 저장했습니다.');
+});
+
+document.getElementById('exportBtn').addEventListener('click',()=>{
+  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),...state},null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`회사차량_사용이력_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),0);
+});
+
+document.getElementById('resetBtn').addEventListener('click',async()=>{
+  if(!confirm('차량 정보, 예약과 사용 이력을 초기화하시겠습니까?')) return;
+  try{ await clearPhotos(); }
+  catch(e){ console.warn('사진 저장소를 비우지 못했습니다.',e); }
+  state=clone(initialState);
+  saveState();
+  returnMode=false;selectedReturnSlot='';resetPhotoInput();
+  renderAll();
+  toast('초기화되었습니다.');
+});
+
+document.querySelectorAll('[data-close]').forEach(btn=>{
+  btn.addEventListener('click',()=>hideModal(btn.dataset.close));
+});
+document.querySelectorAll('.modal-bg').forEach(bg=>{
+  bg.addEventListener('click',e=>{ if(e.target===bg) hideModal(bg.id); });
+});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape') return;
+  const openModal=document.querySelector('.modal-bg.show');
+  if(openModal) hideModal(openModal.id);
+});
+
+function showModal(id){
+  lastFocusedElement=document.activeElement;
+  const modal=document.getElementById(id);
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden','false');
+}
+function hideModal(id){
+  const modal=document.getElementById(id);
+  modal.classList.remove('show');
+  modal.setAttribute('aria-hidden','true');
+  if(lastFocusedElement?.isConnected) lastFocusedElement.focus();
+}
+
+function nowText(){
+  const d=new Date(),p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function normalizeName(value){
+  return String(value).replace(/\s+/g,'').toLocaleLowerCase('ko-KR');
+}
+function toDateTimeInput(date){
+  const p=n=>String(n).padStart(2,'0');
+  return `${date.getFullYear()}-${p(date.getMonth()+1)}-${p(date.getDate())}T${p(date.getHours())}:${p(date.getMinutes())}`;
+}
+function nextHalfHour(date){
+  const result=new Date(date);
+  result.setSeconds(0,0);
+  const minutes=result.getMinutes();
+  result.setMinutes(minutes<30?30:60);
+  return result;
+}
+function formatDateTime(value){
+  const date=new Date(value);
+  if(!Number.isFinite(date.getTime())) return '-';
+  return new Intl.DateTimeFormat('ko-KR',{
+    month:'short',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false
+  }).format(date);
+}
+function escapeHtml(s=''){
+  return String(s).replace(/[&<>"']/g,m=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+  }[m]));
+}
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer=setTimeout(()=>t.classList.remove('show'),2300);
+}
+
+function resetPhotoInput(){
+  returnPhotoFile=null;
+  document.getElementById('returnPhoto').value='';
+  document.getElementById('returnPhotoPreview').removeAttribute('src');
+  document.getElementById('returnPhotoBox').classList.remove('has');
+  if(returnPreviewUrl){
+    URL.revokeObjectURL(returnPreviewUrl);
+    returnPreviewUrl='';
+  }
+}
+
+async function optimizePhoto(file){
+  if(!('createImageBitmap' in window)) return file;
+  const bitmap=await createImageBitmap(file);
+  const ratio=Math.min(1,MAX_PHOTO_EDGE/Math.max(bitmap.width,bitmap.height));
+  if(ratio===1 && file.size<1_500_000){ bitmap.close(); return file; }
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.round(bitmap.width*ratio);
+  canvas.height=Math.round(bitmap.height*ratio);
+  canvas.getContext('2d',{alpha:false}).drawImage(bitmap,0,0,canvas.width,canvas.height);
+  bitmap.close();
+  const blob=await new Promise((resolve,reject)=>{
+    canvas.toBlob(result=>result?resolve(result):reject(new Error('사진 압축 실패')),'image/jpeg',.82);
+  });
+  return new File([blob],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg',lastModified:file.lastModified});
+}
+
+function openDB(){
+  if(dbPromise) return dbPromise;
+  dbPromise=new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_NAME,1);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE,{keyPath:'key'});
+    };
+    req.onsuccess=()=>{
+      req.result.onversionchange=()=>req.result.close();
+      resolve(req.result);
+    };
+    req.onerror=()=>{
+      dbPromise=null;
+      reject(req.error);
+    };
+  });
+  return dbPromise;
+}
+async function savePhoto(key,file){
+  const db=await openDB();
+  const tx=db.transaction(DB_STORE,'readwrite');
+  tx.objectStore(DB_STORE).put({key,blob:file,name:file.name,type:file.type});
+  return new Promise((resolve,reject)=>{
+    tx.oncomplete=resolve;
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+async function readPhoto(key){
+  const db=await openDB();
+  const tx=db.transaction(DB_STORE,'readonly');
+  const req=tx.objectStore(DB_STORE).get(key);
+  return new Promise((resolve,reject)=>{
+    req.onsuccess=()=>resolve(req.result?.blob||null);
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function clearPhotos(){
+  const db=await openDB();
+  const tx=db.transaction(DB_STORE,'readwrite');
+  tx.objectStore(DB_STORE).clear();
+  return new Promise((resolve,reject)=>{
+    tx.oncomplete=resolve;
+    tx.onerror=()=>reject(tx.error);
+    tx.onabort=()=>reject(tx.error);
+  });
+}
+async function showHistoryPhoto(key){
+  try{
+    const blob=await readPhoto(key);
+    if(!blob){ toast('저장된 사진을 찾을 수 없습니다.'); return; }
+    const url=URL.createObjectURL(blob);
+    const img=document.getElementById('historyPhoto');
+    img.onload=()=>URL.revokeObjectURL(url);
+    img.src=url;
+    showModal('photoModal');
+  }catch(e){
+    console.error(e);
+    toast('사진을 불러오지 못했습니다.');
+  }
+}
+
+renderAll();
+</script>
+</body>
+</html>
