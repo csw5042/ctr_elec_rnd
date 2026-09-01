@@ -1045,6 +1045,28 @@ body::before{
   </div>
 </div>
 
+<div class="modal-bg" id="adminLocationModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminLocationModalTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="adminLocationModalTitle">현재 주차 위치 수정</h3>
+        <div class="sub">관리자 전용 기능입니다. 실제 차량이 주차된 위치를 선택해 주세요.</div>
+      </div>
+      <button class="modal-close" data-close="adminLocationModal" aria-label="현재 주차 위치 수정 창 닫기">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field" style="margin:0">
+        <label for="adminLocationSelect">현재 위치<span class="required-mark" aria-hidden="true">*</span></label>
+        <select id="adminLocationSelect" required></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" data-close="adminLocationModal">취소</button>
+      <button class="btn primary" id="saveAdminLocationBtn">위치 저장</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="tripLogModal" aria-hidden="true">
   <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="tripLogModalTitle">
     <div class="modal-head">
@@ -1055,9 +1077,9 @@ body::before{
       <button class="modal-close" data-close="tripLogModal" aria-label="운행일지 창 닫기">×</button>
     </div>
     <div class="modal-body">
-      <p class="form-note"><span class="required-mark" aria-hidden="true">*</span> 표시는 필수 입력 항목입니다. 누적거리는 기존 양식의 마지막 값에 이번 주행거리를 더해 자동 계산합니다. 차량관리 상태는 O(양호), △(점검 필요), X(불량)로 기록합니다.</p>
+      <p class="form-note"><span class="required-mark" aria-hidden="true">*</span> 표시는 필수 입력 항목입니다. 사용일은 실제 사용 시작일을 기본으로 하며, 새벽 복귀 시 종료일을 다음 날짜로 선택할 수 있습니다. 누적거리는 기존 양식의 마지막 값에 이번 주행거리를 더해 자동 계산합니다. 차량관리 상태는 O(양호), △(점검 필요), X(불량)로 기록합니다.</p>
       <div class="form-grid">
-        <div class="field"><label for="logUseDate">사용일자<span class="required-mark" aria-hidden="true">*</span></label><input type="date" id="logUseDate" required></div>
+        <div class="field"><label for="logUseDate">사용일<span class="required-mark" aria-hidden="true">*</span></label><input type="date" id="logUseDate" required></div>
         <div class="field"><label for="logDepartment">부서<span class="required-mark" aria-hidden="true">*</span></label><select id="logDepartment" required>
           <option value="">부서 선택</option>
           <option value="연구개발본부">연구개발본부</option>
@@ -1070,8 +1092,10 @@ body::before{
         <div class="field"><label for="logSignature">서명 (SIGN)<span class="required-mark" aria-hidden="true">*</span></label><input id="logSignature" maxlength="50" required></div>
         <div class="field"><label for="logDestination">외근지<span class="required-mark" aria-hidden="true">*</span></label><input id="logDestination" maxlength="150" placeholder="여러 곳이면 모두 입력" required></div>
         <div class="field"><label for="logPurpose">목적<span class="required-mark" aria-hidden="true">*</span></label><input id="logPurpose" maxlength="150" placeholder="간략히 입력" required></div>
-        <div class="field"><label for="logStartTime">실 사용 시작<span class="required-mark" aria-hidden="true">*</span></label><input type="time" id="logStartTime" required></div>
-        <div class="field"><label for="logEndTime">실 사용 종료<span class="required-mark" aria-hidden="true">*</span></label><input type="time" id="logEndTime" required></div>
+        <div class="field"><label for="logStartDate">실 사용 시작일<span class="required-mark" aria-hidden="true">*</span></label><input type="date" id="logStartDate" required></div>
+        <div class="field"><label for="logStartTime">실 사용 시작시간<span class="required-mark" aria-hidden="true">*</span></label><input type="time" id="logStartTime" required></div>
+        <div class="field"><label for="logEndDate">실 사용 종료일<span class="required-mark" aria-hidden="true">*</span></label><input type="date" id="logEndDate" required></div>
+        <div class="field"><label for="logEndTime">실 사용 종료시간<span class="required-mark" aria-hidden="true">*</span></label><input type="time" id="logEndTime" required></div>
         <div class="field"><label for="logTripKm">주행거리 (km)<span class="required-mark" aria-hidden="true">*</span></label><input type="number" id="logTripKm" min="0" step="1" inputmode="numeric" required></div>
         <div class="field"><label for="logCumulativeKm">누적거리 (km, 자동)</label><input class="readonly-value" type="number" id="logCumulativeKm" readonly></div>
         <div class="field"><label for="logFuelLiters">주유량 (리터, 주유 시)</label><input type="number" id="logFuelLiters" min="0" step="0.1" inputmode="decimal"></div>
@@ -1226,7 +1250,7 @@ const EMPLOYEE_ACCOUNTS = Object.freeze({
   '106362':'고대완','106414':'홍성용','106367':'변정석','106411':'장대섭',
   '106397':'황상훈','106413':'박준혁','106365':'박승완','106406':'서보혁',
   '106433':'오장훈','106389':'이자현','106363':'성건재','106481':'윤봉채',
-  '106485':'최성우','106417':'이찬석','106430':'류보경','106434':'김현종'
+  '106458':'최성우','106417':'이찬석','106430':'류보경','106434':'김현종'
 });
 const AUTH_EMAIL_DOMAIN='ctr-elec-rnd.local';
 const DEFAULT_VISIBLE_PASSWORD='1234';
@@ -1280,8 +1304,9 @@ const groups = [
   {id:'H', kind:'singleCol', count:15, x:479, y:955, w:162, h:24, prefix:'H', labeled:true},
   {id:'I', kind:'singleCol', count:13, x:720, y:955, w:162, h:24, prefix:'I', labeled:true},
   {id:'LEFT6', kind:'singleCol', count:6, x:80, y:465, w:30, h:57, prefix:'좌측상단'},
-  {id:'LEFT15', kind:'singleCol', count:15, x:80, y:955, w:80, h:24, prefix:'좌측하단'},
-  {id:'SMALL8', kind:'smallLabels', count:8, x:82, y:807, w:61, h:19, prefix:'경차'},
+  // 좌측 경차 영역과 상/하단 일반 주차면 사이에 여백을 확보해 테두리 겹침 방지
+  {id:'LEFT15', kind:'singleCol', count:15, x:80, y:980, w:80, h:24, prefix:'좌측하단'},
+  {id:'SMALL8', kind:'smallLabels', count:8, x:82, y:812, w:61, h:19, prefix:'경차'},
   {id:'BOTTOM', kind:'row', count:24, x:80, y:1370, w:30, h:62, small:true, prefix:'하단경차'}
 ];
 
@@ -1360,6 +1385,17 @@ function accountFromFirebaseUser(user){
 }
 function canModify(){ return !!currentSession && !passwordChangeRequired; }
 function isAdmin(){ return canModify() && currentSession?.role==='admin'; }
+function canReturnCurrentCar(){
+  if(!canModify() || state.car.status!=='inuse') return false;
+  // 차량을 실제로 사용 시작한 사용자 본인만 반납할 수 있습니다.
+  // admin 계정도 다른 사용자가 사용 중인 차량을 대신 반납할 수 없습니다.
+  return normalizeName(currentSession?.name||'')===normalizeName(state.car.currentUser||'');
+}
+function getReturnBlockedMessage(){
+  if(!canModify()) return passwordChangeRequired?'비밀번호 변경을 완료해 주세요.':'로그인 후 반납할 수 있습니다.';
+  const user=state.car.currentUser||'다른 사용자';
+  return `현재 ${user}님이 차량을 사용 중이므로 다른 사용자는 반납할 수 없습니다.`;
+}
 function requireLogin(message='로그인 후 사용할 수 있습니다.'){
   if(canModify()) return true;
   toast(passwordChangeRequired?'비밀번호 변경을 완료해 주세요.':message);
@@ -1766,10 +1802,41 @@ function renderReservations(){
   }).join('');
 }
 
+function getAllParkingSlotIds(){
+  const slots=[];
+  groups.forEach(g=>{
+    for(let i=1;i<=g.count;i++){
+      if(g.kind==='smallLabels') slots.push(`${g.prefix}${i}`);
+      else slots.push(`${g.prefix}${String(i).padStart(2,'0')}`);
+    }
+  });
+  return slots;
+}
+
+function openAdminLocationModal(){
+  if(!isAdmin()){ toast('관리자만 현재 위치를 수정할 수 있습니다.'); return; }
+  if(state.car.status!=='available'){
+    toast('차량 사용 중에는 현재 주차 위치를 직접 수정할 수 없습니다.');
+    return;
+  }
+  if(!firebaseReady){
+    toast('Firebase 연결 후 현재 위치를 수정해 주세요.');
+    return;
+  }
+  const select=document.getElementById('adminLocationSelect');
+  const slots=getAllParkingSlotIds();
+  select.innerHTML=slots.map(slot=>`<option value="${escapeHtml(slot)}">${escapeHtml(slot)}</option>`).join('');
+  if(slots.includes(state.car.slot)) select.value=state.car.slot;
+  showModal('adminLocationModal');
+  setTimeout(()=>select.focus(),60);
+}
+
 function renderCar(){
   const c=state.car;
   const card=document.getElementById('carCard');
   const available=c.status==='available';
+  const returnAllowed=!available && canReturnCurrentCar();
+  const returnBlockedMessage=!available && !returnAllowed ? getReturnBlockedMessage() : '';
   const reservation=getActiveReservation()||getRelevantReservations()[0]||null;
   const reservationActive=reservation && new Date(reservation.startAt).getTime()<=Date.now();
   card.innerHTML=`
@@ -1798,9 +1865,14 @@ function renderCar(){
     <div class="action-row">
       ${available
         ? `<button class="btn primary" id="useCarAction" ${canModify()?'':'disabled title="로그인 후 사용할 수 있습니다."'}>차량 사용</button>`
-        : `<button class="btn primary" id="returnCarAction" ${canModify()?'':'disabled title="로그인 후 반납할 수 있습니다."'}>반납 등록</button>`}
+        : `<button class="btn primary" id="returnCarAction" ${returnAllowed?'':`disabled title="${escapeHtml(returnBlockedMessage)}"`}>반납 등록</button>`}
+      ${available && isAdmin()?'<button class="btn" id="adminLocationAction" type="button">현재 위치 수정</button>':''}
     </div>
-    ${canModify()?'':'<div class="login-required-hint">로그인 후 차량 사용 · 반납 · 예약 기능이 활성화됩니다.</div>'}
+    ${!canModify()
+      ? '<div class="login-required-hint">로그인 후 차량 사용 · 반납 · 예약 기능이 활성화됩니다.</div>'
+      : (!available && !returnAllowed
+          ? `<div class="login-required-hint">${escapeHtml(returnBlockedMessage)}</div>`
+          : '')}
   `;
 }
 
@@ -1812,7 +1884,15 @@ document.getElementById('carCard').addEventListener('click',e=>{
   }
   if(e.target.closest('#returnCarAction')){
     if(!requireLogin()) return;
+    if(!canReturnCurrentCar()){
+      toast(getReturnBlockedMessage());
+      return;
+    }
     startReturnMode();
+    return;
+  }
+  if(e.target.closest('#adminLocationAction')){
+    openAdminLocationModal();
   }
 });
 
@@ -1853,13 +1933,15 @@ function renderTripLogs(){
     list.innerHTML='<div class="empty-history">운행일지가 없습니다.</div>';
     return;
   }
-  list.innerHTML=state.tripLogs.slice(-5).reverse().map(item=>`
+  const visibleLogs=isAdmin()?[...state.tripLogs].reverse():state.tripLogs.slice(-5).reverse();
+  list.innerHTML=visibleLogs.map(item=>`
     <div class="log-item">
       <div class="log-main">
         <span>${escapeHtml(formatLogDate(item.useDate))} · ${escapeHtml(item.name)}</span>
         <span class="odo-badge">누적 ${Number(item.cumulativeKm).toLocaleString('ko-KR')}km</span>
       </div>
-      <div class="log-meta">${escapeHtml(item.destination)} · ${escapeHtml(item.purpose)}<br>주행 ${Number(item.tripKm).toLocaleString('ko-KR')}km · ${escapeHtml(item.startTime)}~${escapeHtml(item.endTime)}</div>
+      <div class="log-meta">${escapeHtml(item.destination)} · ${escapeHtml(item.purpose)}<br>주행 ${Number(item.tripKm).toLocaleString('ko-KR')}km · ${escapeHtml(formatTripDateTime(item.startDate||item.useDate,item.startTime))} ~ ${escapeHtml(formatTripDateTime(item.endDate||item.useDate,item.endTime))}</div>
+      ${isAdmin()?`<div class="history-admin-actions"><button class="history-delete" type="button" data-delete-triplog="${escapeHtml(item.id)}">운행일지 삭제</button></div>`:''}
     </div>
   `).join('');
 }
@@ -1874,6 +1956,19 @@ function formatLogTime(value){
   if(!value) return '';
   const [hour,minute]=value.split(':');
   return `${Number(hour)}시 ${minute}분`;
+}
+
+function formatTripDateTime(dateValue,timeValue){
+  if(!dateValue && !timeValue) return '-';
+  if(!dateValue) return timeValue||'-';
+  const date=new Date(`${dateValue}T00:00:00`);
+  if(!Number.isFinite(date.getTime())) return `${dateValue} ${timeValue||''}`.trim();
+  const day=`${date.getMonth()+1}/${date.getDate()}`;
+  return `${day} ${timeValue||''}`.trim();
+}
+
+function formatPrintTripDateTime(dateValue,timeValue){
+  return formatTripDateTime(dateValue,timeValue);
 }
 
 function printCell(value='',className=''){
@@ -1893,7 +1988,7 @@ function renderPrintLog(){
         ${printCell(formatLogDate(item.useDate))}
         ${printCell(item.department)}${printCell(item.name)}
         ${printCell(item.destination,'text-left')}${printCell(item.purpose,'text-left')}
-        ${printCell(formatLogTime(item.startTime))}${printCell(item.endTimeText||formatLogTime(item.endTime))}
+        ${printCell(formatPrintTripDateTime(item.startDate||item.useDate,item.startTime))}${printCell(formatPrintTripDateTime(item.endDate||item.useDate,item.endTime))}
         ${printCell(`${Number(item.tripKm).toLocaleString('ko-KR')}km`)}${printCell(`${Number(item.cumulativeKm).toLocaleString('ko-KR')}km`)}
         ${printCell(item.fuelLiters===null||item.fuelLiters===''?'':`${Number(item.fuelLiters).toLocaleString('ko-KR')}ℓ`)}
         ${printCell(m.exterior)}${printCell(m.interior)}${printCell(m.engineOil)}${printCell(m.transmission)}${printCell(m.wheelBalance)}${printCell(m.other,'text-left')}
@@ -1973,6 +2068,10 @@ document.getElementById('startUseBtn').addEventListener('click',()=>{
 
 function startReturnMode(){
   if(!requireLogin()) return;
+  if(!canReturnCurrentCar()){
+    toast(getReturnBlockedMessage());
+    return;
+  }
   returnMode=true;
   selectedReturnSlot='';
   resetPhotoInput();
@@ -2037,8 +2136,13 @@ document.getElementById('completeReturnBtn').addEventListener('click',()=>{
 function openTripLogModal(name){
   const today=new Date();
   const p=n=>String(n).padStart(2,'0');
+  const todayText=`${today.getFullYear()}-${p(today.getMonth()+1)}-${p(today.getDate())}`;
+  const startedMatch=String(state.car.useStartedAt||'').match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
+  const actualStartDate=startedMatch?.[1]||todayText;
+  const actualStartTime=startedMatch?.[2]||`${p(today.getHours())}:${p(today.getMinutes())}`;
   const previous=[...state.tripLogs].reverse().find(item=>normalizeName(item.name)===normalizeName(name));
-  document.getElementById('logUseDate').value=`${today.getFullYear()}-${p(today.getMonth()+1)}-${p(today.getDate())}`;
+  // 사용일자는 실제 차량 사용 시작일을 기본값으로 사용합니다. 일반적인 당일 사용은 자동으로 오늘 날짜가 됩니다.
+  document.getElementById('logUseDate').value=actualStartDate;
   const allowedDepartments=['연구개발본부','전장통합팀','전장회로팀','전장제어팀','전장검증팀'];
   document.getElementById('logDepartment').value=allowedDepartments.includes(previous?.department)?previous.department:'';
   document.getElementById('logName').value=name;
@@ -2046,7 +2150,9 @@ function openTripLogModal(name){
   document.getElementById('logSignature').value=name;
   document.getElementById('logDestination').value='';
   document.getElementById('logPurpose').value='';
-  document.getElementById('logStartTime').value=/\d{2}:\d{2}$/.test(state.car.useStartedAt||'')?state.car.useStartedAt.slice(-5):'';
+  document.getElementById('logStartDate').value=actualStartDate;
+  document.getElementById('logStartTime').value=actualStartTime;
+  document.getElementById('logEndDate').value=todayText;
   document.getElementById('logEndTime').value=`${p(today.getHours())}:${p(today.getMinutes())}`;
   document.getElementById('logTripKm').value='';
   document.getElementById('logFuelLiters').value='';
@@ -2063,6 +2169,10 @@ function updateCumulativePreview(){
   document.getElementById('logCumulativeKm').value=getLatestCumulativeKm()+trip;
 }
 document.getElementById('logTripKm').addEventListener('input',updateCumulativePreview);
+document.getElementById('logStartDate').addEventListener('change',e=>{
+  // 운행일지의 사용일은 실제 출발일(실 사용 시작일)을 기본값으로 함께 맞춥니다.
+  if(e.target.value) document.getElementById('logUseDate').value=e.target.value;
+});
 document.getElementById('logName').addEventListener('input',e=>{
   const signature=document.getElementById('logSignature');
   if(!signature.dataset.edited) signature.value=e.target.value;
@@ -2078,7 +2188,9 @@ document.getElementById('saveTripLogBtn').addEventListener('click',async()=>{
     signature:document.getElementById('logSignature').value.trim(),
     destination:document.getElementById('logDestination').value.trim(),
     purpose:document.getElementById('logPurpose').value.trim(),
+    startDate:document.getElementById('logStartDate').value,
     startTime:document.getElementById('logStartTime').value,
+    endDate:document.getElementById('logEndDate').value,
     endTime:document.getElementById('logEndTime').value,
     tripRaw:document.getElementById('logTripKm').value,
     tripKm:Number(document.getElementById('logTripKm').value),
@@ -2086,10 +2198,15 @@ document.getElementById('saveTripLogBtn').addEventListener('click',async()=>{
     managementOther:document.getElementById('logManagementOther').value.trim(),
     remarks:document.getElementById('logRemarks').value.trim()
   };
-  if(!values.useDate||!values.department||!values.name||!values.destination||!values.purpose||!values.startTime||!values.endTime||!values.signature){
+  if(!values.useDate||!values.department||!values.name||!values.destination||!values.purpose||!values.startDate||!values.startTime||!values.endDate||!values.endTime||!values.signature){
     toast('별(*) 표시된 필수 항목을 모두 입력해 주세요.'); return;
   }
-  if(values.startTime>=values.endTime){ toast('도착 시간은 출발 시간보다 늦어야 합니다.'); return; }
+  const actualStart=new Date(`${values.startDate}T${values.startTime}:00`).getTime();
+  const actualEnd=new Date(`${values.endDate}T${values.endTime}:00`).getTime();
+  if(!Number.isFinite(actualStart)||!Number.isFinite(actualEnd)){
+    toast('실 사용 시작/종료 날짜와 시간을 확인해 주세요.'); return;
+  }
+  if(actualStart>=actualEnd){ toast('실 사용 종료 일시는 시작 일시보다 늦어야 합니다.'); return; }
   if(values.tripRaw===''||!Number.isFinite(values.tripKm)||values.tripKm<0){ toast('주행거리를 0km 이상으로 입력해 주세요.'); return; }
   const fuelLiters=values.fuelRaw===''?null:Number(values.fuelRaw);
   if(fuelLiters!==null&&(!Number.isFinite(fuelLiters)||fuelLiters<0)){ toast('주유량을 올바르게 입력해 주세요.'); return; }
@@ -2131,7 +2248,9 @@ document.getElementById('saveTripLogBtn').addEventListener('click',async()=>{
     name:values.name,
     destination:values.destination,
     purpose:values.purpose,
+    startDate:values.startDate,
     startTime:values.startTime,
+    endDate:values.endDate,
     endTime:values.endTime,
     tripKm:values.tripKm,
     cumulativeKm:getLatestCumulativeKm()+values.tripKm,
@@ -2160,6 +2279,33 @@ document.getElementById('saveTripLogBtn').addEventListener('click',async()=>{
   renderAll();
   scheduleDeferredFirebaseRefresh();
   toast(`${values.name}님 운행일지와 반납 등록이 완료되었습니다.`);
+});
+
+document.getElementById('saveAdminLocationBtn').addEventListener('click',async()=>{
+  if(!isAdmin()){ toast('관리자만 현재 위치를 수정할 수 있습니다.'); return; }
+  if(state.car.status!=='available'){ toast('차량 사용 중에는 현재 위치를 수정할 수 없습니다.'); return; }
+  if(!firebaseReady){ toast('Firebase 연결 후 현재 위치를 수정해 주세요.'); return; }
+  const select=document.getElementById('adminLocationSelect');
+  const nextSlot=select.value;
+  if(!nextSlot || !getAllParkingSlotIds().includes(nextSlot)){ toast('주차 위치를 선택해 주세요.'); return; }
+  const previousSlot=state.car.slot;
+  if(previousSlot===nextSlot){ hideModal('adminLocationModal'); toast('현재 위치와 동일합니다.'); return; }
+  const button=document.getElementById('saveAdminLocationBtn');
+  button.disabled=true;
+  state.car.slot=nextSlot;
+  const synced=await saveState();
+  if(!synced){
+    state.car.slot=previousSlot;
+    saveLocalState();
+    renderAll();
+    button.disabled=false;
+    toast('Firebase DB 저장에 실패하여 위치 수정을 취소했습니다.');
+    return;
+  }
+  hideModal('adminLocationModal');
+  button.disabled=false;
+  renderAll();
+  toast(`현재 주차 위치를 ${nextSlot}(으)로 수정했습니다.`);
 });
 
 document.getElementById('openReservationBtn').addEventListener('click',()=>{
@@ -2307,6 +2453,30 @@ document.getElementById('passwordSaveBtn').addEventListener('click',async()=>{
     else if(code.includes('requires-recent-login')) setPasswordError('보안을 위해 로그아웃 후 다시 로그인한 뒤 변경해 주세요.');
     else setPasswordError('비밀번호 변경에 실패했습니다. 다시 시도해 주세요.');
   }finally{ button.disabled=false; }
+});
+
+document.getElementById('tripLogList').addEventListener('click',async e=>{
+  const button=e.target.closest('[data-delete-triplog]');
+  if(!button) return;
+  if(!isAdmin()){ toast('관리자만 운행일지를 삭제할 수 있습니다.'); return; }
+  if(!firebaseReady){ toast('Firebase 연결 후 운행일지를 삭제해 주세요.'); return; }
+  const item=state.tripLogs.find(log=>log.id===button.dataset.deleteTriplog);
+  if(!item) return;
+  if(!confirm(`${formatLogDate(item.useDate)} · ${item.name} 운행일지를 삭제하시겠습니까?
+Firestore DB에서도 해당 내역이 삭제됩니다.`)) return;
+  button.disabled=true;
+  const backup=[...state.tripLogs];
+  state.tripLogs=state.tripLogs.filter(log=>log.id!==item.id);
+  const synced=await saveState();
+  if(!synced){
+    state.tripLogs=backup;
+    saveLocalState();
+    renderTripLogs();
+    toast('Firebase DB 삭제에 실패하여 운행일지 삭제를 취소했습니다.');
+    return;
+  }
+  renderTripLogs();
+  toast('운행일지를 Firestore DB에서 삭제했습니다.');
 });
 
 document.getElementById('historyList').addEventListener('click',async e=>{
