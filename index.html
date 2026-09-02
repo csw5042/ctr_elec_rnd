@@ -242,6 +242,21 @@ button{cursor:pointer}
 .log-item:last-child{border-bottom:0}
 .log-main{display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:900}
 .log-meta{margin-top:4px;font-size:12px;line-height:1.5;color:var(--muted)}
+.log-detail-row{display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:12px;align-items:start;margin-top:6px}
+.log-return{margin-top:6px;color:#555d68;font-weight:800}
+.log-photo-button{
+  width:96px;height:72px;padding:0;overflow:hidden;position:relative;
+  border:1px solid #dfe2e6;border-radius:10px;background:#f5f6f7;color:#858c96;
+  display:grid;place-items:center;font-size:10px;font-weight:850;cursor:pointer;
+}
+.log-photo-button img{display:none;width:100%;height:100%;object-fit:cover}
+.log-photo-button.loaded img{display:block}
+.log-photo-button.loaded .log-photo-status{display:none}
+.log-photo-button:hover{border-color:#d92d20;box-shadow:0 4px 12px rgba(217,45,32,.12)}
+.log-photo-placeholder{
+  width:96px;height:72px;border:1px dashed #d7dbe0;border-radius:10px;background:#fafbfc;
+  display:grid;place-items:center;color:#a0a6ae;font-size:10px;font-weight:800;text-align:center;
+}
 .odo-badge{white-space:nowrap;color:var(--primary)}
 .print-sheet{display:none}
 .print-page{break-after:page}
@@ -504,11 +519,19 @@ body::before{
 .slot.return-pickable{background:#fffafa}
 .slot.return-pickable:hover{background:#fff2f0;border-color:#e8685e}
 .slot.return-selected{background:#fee9e7!important;border-color:#d92d20!important;color:#a71d14!important;outline:2px solid rgba(217,45,32,.22);outline-offset:-2px;box-shadow:0 5px 14px rgba(217,45,32,.15)}
+.slot.double-parking{
+  border:2px dashed #747b85;border-radius:9px;
+  background:repeating-linear-gradient(135deg,#f7f8f9 0,#f7f8f9 9px,#eceef1 9px,#eceef1 18px);
+  color:#3e444c;font-size:13px;font-weight:950;line-height:1.25;white-space:pre-line;
+}
+.slot.double-parking:hover{border-color:#d92d20;background:#fff3f1}
+.slot.double-parking.car-here{background:#fff0ee;border-color:#ef6f64}
 .facility{border-color:#b6bbc3;background:#f4f5f6;color:#4d535b;border-radius:4px;font-size:12px}
 .gate{background:#f1f2f4;color:#2f343a}
 .legend{padding:13px 20px 17px;border-top:1px solid #f0f1f3;background:#fff;color:#7d848e;font-size:11px;gap:16px}
 .legend i{width:13px;height:13px;border-radius:4px}
 .legend .occupied{background:#fff0ee;border-color:#ef8d84}.legend .selected{background:#fee9e7;border-color:#d92d20}
+.legend .double{border:2px dashed #747b85;background:repeating-linear-gradient(135deg,#f7f8f9 0,#f7f8f9 4px,#e7e9ec 4px,#e7e9ec 8px)}
 .mode-banner{padding:11px 20px;background:linear-gradient(90deg,#fff1ef,#fff8f7);border-bottom:1px solid #f5d5d1;color:#a3261c;font-size:11.5px;font-weight:850}
 
 .car-card{padding:20px}
@@ -766,6 +789,8 @@ body::before{
   .reservation-name,.history-title{font-size:12.5px}
   .history-time,.reservation-time,.history-meta,.log-meta{font-size:10.5px}
   .log-main{font-size:12px}
+  .log-detail-row{grid-template-columns:minmax(0,1fr) 82px;gap:9px}
+  .log-photo-button,.log-photo-placeholder{width:82px;height:64px}
 
   /* 항상 닿는 엄지용 빠른 메뉴 */
   .mobile-quick-nav{
@@ -1027,6 +1052,7 @@ body::before{
     <div class="legend">
       <span><i class="normal"></i> 일반 주차면</span>
       <span><i class="small"></i> 경차 주차면</span>
+      <span><i class="double"></i> 이중주차</span>
       <span><i class="occupied"></i> 회사차량 위치</span>
       <span><i class="selected"></i> 반납 선택 위치</span>
     </div>
@@ -1388,6 +1414,8 @@ const PHOTO_RETENTION_COUNT = 10; // 최근 반납 사진 10개만 유지
   - D/E/F: 각 15면 단일 열
   - G/H: 각 15면 단일 열
   - I: 13면 단일 열, G/H와 상단 정렬
+  - 이중주차 A: 좌측 상단 주차면 위의 대형 1면
+  - 이중주차 B: I열 우측의 대형 1면
   - 좌측: 1~6 일반 주차면, 경차1~8, 하단 1~15 일반 주차면
   - 최하단: 경차 1~24 + 출구 + 입구
 */
@@ -1402,6 +1430,8 @@ const groups = [
   {id:'G', kind:'singleCol', count:15, x:238, y:955, w:162, h:24, prefix:'G', labeled:true},
   {id:'H', kind:'singleCol', count:15, x:479, y:955, w:162, h:24, prefix:'H', labeled:true},
   {id:'I', kind:'singleCol', count:13, x:720, y:955, w:162, h:24, prefix:'I', labeled:true},
+  {id:'DOUBLE_A', kind:'largeSlot', slotId:'이중주차A', label:'이중주차\nA', x:80, y:370, w:82, h:76},
+  {id:'DOUBLE_B', kind:'largeSlot', slotId:'이중주차B', label:'이중주차\nB', x:900, y:955, w:112, h:96},
   {id:'LEFT6', kind:'singleCol', count:6, x:80, y:465, w:30, h:57, prefix:'좌측상단'},
   // 좌측 경차 영역과 상/하단 일반 주차면 사이에 여백을 확보해 테두리 겹침 방지
   {id:'LEFT15', kind:'singleCol', count:15, x:80, y:980, w:80, h:24, prefix:'좌측하단'},
@@ -1454,6 +1484,7 @@ let returnPhotoFile = null;
 let returnPreviewUrl = '';
 let lastFocusedElement = null;
 let dbPromise = null;
+let tripLogPhotoUrls = [];
 let mapScale = window.matchMedia('(max-width:720px)').matches ? 0.7 : 1; // 모바일 기본 70%, PC 기본 100%
 let mapTouchStart = null;
 let suppressMapClickUntil = 0;
@@ -1768,10 +1799,10 @@ async function initializeFirebaseSync(){
   }
 }
 
-function createSlot(slotId,label,x,y,w,h,isSmall=false){
+function createSlot(slotId,label,x,y,w,h,isSmall=false,extraClass=''){
   const el=document.createElement('button');
   el.type='button';
-  el.className='slot'+(isSmall?' small':'');
+  el.className='slot'+(isSmall?' small':'')+(extraClass?` ${extraClass}`:'');
   el.dataset.slot=slotId;
   el.textContent=label;
   el.setAttribute('aria-label',`${slotId} 주차면`);
@@ -1810,6 +1841,9 @@ function renderMap(){
   const fragment=document.createDocumentFragment();
 
   groups.forEach(g=>{
+    if(g.kind==='largeSlot'){
+      fragment.appendChild(createSlot(g.slotId,g.label,g.x,g.y,g.w,g.h,false,'double-parking'));
+    }
     if(g.kind==='row'){
       for(let i=1;i<=g.count;i++){
         const id=`${g.prefix}${String(i).padStart(2,'0')}`;
@@ -1971,6 +2005,10 @@ function renderReservations(){
 function getAllParkingSlotIds(){
   const slots=[];
   groups.forEach(g=>{
+    if(g.kind==='largeSlot'){
+      slots.push(g.slotId);
+      return;
+    }
     for(let i=1;i<=g.count;i++){
       if(g.kind==='smallLabels') slots.push(`${g.prefix}${i}`);
       else slots.push(`${g.prefix}${String(i).padStart(2,'0')}`);
@@ -2091,6 +2129,50 @@ function getLatestCumulativeKm(){
   return state.tripLogs.reduce((latest,item)=>Math.max(latest,Number(item.cumulativeKm)||0),0);
 }
 
+function getTripLogReturnDetails(logs){
+  const returnHistory=state.history.filter(item=>item?.action==='반납');
+  const usedHistoryIds=new Set();
+  return logs.map(item=>{
+    let historyItem=null;
+    if(item.returnHistoryId){
+      historyItem=returnHistory.find(history=>history.id===item.returnHistoryId)||null;
+    }
+    if(!historyItem && (!item.returnSlot || !item.photoKey)){
+      historyItem=returnHistory.find(history=>{
+        if(usedHistoryIds.has(history.id)) return false;
+        return normalizeName(history.name||'')===normalizeName(item.name||'')
+          && String(history.time||'').slice(0,10)===String(item.useDate||'');
+      })||null;
+    }
+    if(historyItem) usedHistoryIds.add(historyItem.id);
+    return {
+      item,
+      returnSlot:item.returnSlot||historyItem?.slot||'',
+      photoKey:item.photoKey||historyItem?.photoKey||''
+    };
+  });
+}
+
+async function hydrateTripLogPhotos(list){
+  tripLogPhotoUrls.forEach(url=>URL.revokeObjectURL(url));
+  tripLogPhotoUrls=[];
+  const images=[...list.querySelectorAll('[data-trip-photo]')];
+  await Promise.all(images.map(async img=>{
+    try{
+      const blob=await readPhoto(img.dataset.tripPhoto);
+      if(!blob || !img.isConnected) return;
+      const url=URL.createObjectURL(blob);
+      tripLogPhotoUrls.push(url);
+      img.src=url;
+      img.closest('.log-photo-button')?.classList.add('loaded');
+    }catch(error){
+      console.warn('운행일지 사진 썸네일 조회 실패:',error);
+      const status=img.closest('.log-photo-button')?.querySelector('.log-photo-status');
+      if(status) status.textContent='사진 없음';
+    }
+  }));
+}
+
 function renderTripLogs(){
   const list=document.getElementById('tripLogList');
   const latest=getLatestCumulativeKm();
@@ -2100,16 +2182,27 @@ function renderTripLogs(){
     return;
   }
   const visibleLogs=isAdmin()?[...state.tripLogs].reverse():state.tripLogs.slice(-5).reverse();
-  list.innerHTML=visibleLogs.map(item=>`
+  const logsWithReturn=getTripLogReturnDetails(visibleLogs);
+  list.innerHTML=logsWithReturn.map(({item,returnSlot,photoKey})=>`
     <div class="log-item">
       <div class="log-main">
         <span>${escapeHtml(formatLogDate(item.useDate))} · ${escapeHtml(item.name)}</span>
         <span class="odo-badge">누적 ${Number(item.cumulativeKm).toLocaleString('ko-KR')}km</span>
       </div>
-      <div class="log-meta">${escapeHtml(item.destination)} · ${escapeHtml(item.purpose)}<br>주행 ${Number(item.tripKm).toLocaleString('ko-KR')}km · ${escapeHtml(formatTripDateTime(item.startDate||item.useDate,item.startTime))} ~ ${escapeHtml(formatTripDateTime(item.endDate||item.useDate,item.endTime))}</div>
+      <div class="log-detail-row">
+        <div class="log-meta">
+          ${escapeHtml(item.destination)} · ${escapeHtml(item.purpose)}<br>
+          주행 ${Number(item.tripKm).toLocaleString('ko-KR')}km · ${escapeHtml(formatTripDateTime(item.startDate||item.useDate,item.startTime))} ~ ${escapeHtml(formatTripDateTime(item.endDate||item.useDate,item.endTime))}
+          <div class="log-return">반납 위치 ${escapeHtml(returnSlot||'미등록')}</div>
+        </div>
+        ${photoKey
+          ? `<button class="log-photo-button" type="button" data-photo="${escapeHtml(photoKey)}" aria-label="${escapeHtml(item.name)} 반납 사진 크게 보기"><span class="log-photo-status">사진 불러오는 중</span><img data-trip-photo="${escapeHtml(photoKey)}" alt="${escapeHtml(item.name)} 반납 사진"></button>`
+          : '<div class="log-photo-placeholder">사진<br>미등록</div>'}
+      </div>
       ${isAdmin()?`<div class="history-admin-actions"><button class="history-delete" type="button" data-delete-triplog="${escapeHtml(item.id)}">운행일지 삭제</button></div>`:''}
     </div>
   `).join('');
+  hydrateTripLogPhotos(list);
 }
 
 function formatLogDate(value){
@@ -2463,6 +2556,9 @@ document.getElementById('saveTripLogBtn').addEventListener('click',async()=>{
   });
   state.tripLogs.push({
     id:'log'+Date.now(),
+    returnHistoryId:historyId,
+    returnSlot:selectedReturnSlot,
+    photoKey,
     useDate:values.useDate,
     department:values.department,
     name:values.name,
@@ -2676,6 +2772,11 @@ document.getElementById('passwordSaveBtn').addEventListener('click',async()=>{
 });
 
 document.getElementById('tripLogList').addEventListener('click',async e=>{
+  const photoButton=e.target.closest('[data-photo]');
+  if(photoButton){
+    await showHistoryPhoto(photoButton.dataset.photo);
+    return;
+  }
   const button=e.target.closest('[data-delete-triplog]');
   if(!button) return;
   if(!isAdmin()){ toast('관리자만 운행일지를 삭제할 수 있습니다.'); return; }
@@ -2710,6 +2811,9 @@ document.getElementById('historyList').addEventListener('click',async e=>{
   if(item.photoKey){
     const deleted=await deletePhotoData(item.photoKey);
     if(!deleted){ button.disabled=false; toast('사진 데이터를 삭제하지 못해 이력 삭제를 중단했습니다.'); return; }
+    state.tripLogs.forEach(log=>{
+      if(log.photoKey===item.photoKey) delete log.photoKey;
+    });
   }
   state.history=state.history.filter(h=>h.id!==item.id);
   await saveState();
@@ -3074,6 +3178,9 @@ async function pruneOldPhotos(){
     if(deleted){
       // 사용 이력 텍스트는 유지하고 사진 연결 정보만 제거
       delete item.photoKey;
+      state.tripLogs.forEach(log=>{
+        if(log.photoKey===photoKey) delete log.photoKey;
+      });
       stateChanged=true;
     }
   }
