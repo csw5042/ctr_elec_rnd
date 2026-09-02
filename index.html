@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="회사 차량의 예약, 사용 상태, 반납 위치와 사진을 관리하는 웹 앱">
 <meta name="theme-color" content="#d92d20">
-<title>회사 차량 관리</title>
+<title>회사 차량 주차 관리</title>
 <style>
 :root{
   --bg:#f4f7fb;
@@ -85,10 +85,10 @@ button{cursor:pointer}
 .panel-head h2{font-size:16px;margin:0}
 .panel-head .sub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45}
 .map-mobile-tools{display:none}
-.map-scroll{overflow:auto;padding:16px;overscroll-behavior:contain}
-.map-stage{position:relative;width:1040px;height:1480px;margin:0 auto}
+.map-scroll{overflow:hidden;padding:16px;overscroll-behavior:auto;touch-action:pan-y}
+.map-stage{position:relative;width:900px;height:1280px;margin:0 auto}
 .parking-map{
-  width:1040px;height:1480px;position:absolute;left:0;top:0;
+  width:900px;height:1280px;position:absolute;left:0;top:0;
   border:1px dashed #cbd4e0;border-radius:14px;background:#fff;
   transform-origin:top left;will-change:transform;
 }
@@ -1011,6 +1011,46 @@ body::before{
   .log-detail-row{grid-template-columns:minmax(0,1fr) 76px}
   .log-photo-button,.log-photo-placeholder{width:76px;height:62px}
 }
+
+/* ===== 간편 주차 구역 선택 ===== */
+.map-mobile-tools,.map-zone-strip{display:none!important}
+.map-scroll{
+  height:auto!important;min-height:0!important;max-height:none!important;
+  overflow:hidden!important;overscroll-behavior:auto!important;scrollbar-gutter:auto!important;
+  touch-action:pan-y;background-size:auto,24px 24px,24px 24px,auto;
+}
+.map-stage{margin:0 auto!important;filter:drop-shadow(0 18px 22px rgba(16,24,40,.08))}
+.parking-map{border-style:solid;box-shadow:9px 9px 0 #f0f1f3,16px 16px 0 #e8eaed,0 22px 44px rgba(16,24,40,.06)}
+.slot.zone{
+  border:2px solid #aeb4bc;border-radius:18px;
+  background:linear-gradient(145deg,#fff,#f5f6f7);color:#30343a;
+  font-size:26px;font-weight:950;line-height:1.25;white-space:pre-line;
+  letter-spacing:-.03em;cursor:pointer;touch-action:manipulation;
+}
+.slot.zone.compact{font-size:28px;border-radius:12px}
+.slot.zone.edge-zone{font-size:25px}
+.slot.zone:hover{border-color:var(--primary);background:#fff5f3;transform:translateY(-2px)}
+.slot.zone.car-here{background:#fff0ee;border-color:#ef8d84;color:#a82218}
+.slot.zone.return-pickable{background:#fffafa;border-color:#dcaaa5}
+.slot.zone.return-selected{background:#fee9e7!important;border-color:#d92d20!important;color:#a71d14!important}
+.slot.zone.double-zone{
+  border-style:dashed;border-color:#747b85;
+  background:repeating-linear-gradient(135deg,#fafafa 0,#fafafa 9px,#e7e9ec 9px,#e7e9ec 18px);
+}
+.slot.zone.double-zone.car-here{
+  background:repeating-linear-gradient(135deg,#fff3f1 0,#fff3f1 9px,#f4cbc7 9px,#f4cbc7 18px);
+}
+.slot.zone.small-zone{border-color:#d5b13f;background:linear-gradient(145deg,#fffbed,#ffefb6);color:#6f5700}
+.slot.zone.small-zone.car-here{background:#ffe9a0;border-color:#c69400;color:#8a5300}
+.facility.zone-facility{border-radius:12px;font-size:18px}
+#tripLogList{
+  max-height:none!important;overflow:visible!important;
+  overscroll-behavior:auto!important;touch-action:pan-y;
+}
+@media(max-width:720px){
+  .map-scroll{padding:10px!important}
+  .legend{padding-top:10px}
+}
 </style>
 </head>
 <body>
@@ -1019,7 +1059,7 @@ body::before{
     <div class="logo" aria-hidden="true"><span>CAR</span></div>
     <div class="brand-copy">
       <div class="workspace-kicker"><span class="kicker-dot"></span>FLEET WORKSPACE</div>
-      <h1>회사 차량 관리</h1>
+      <h1>회사 차량 주차 관리</h1>
       <p>차량 예약 · 사용 상태 · 반납 위치 · 사진 · 운행일지를 한 화면에서 관리합니다.</p>
     </div>
   </div>
@@ -1053,10 +1093,10 @@ body::before{
     <div class="panel-head">
       <div>
         <h2 id="parkingTitle">주차장 배치도</h2>
-        <div class="sub">실제 배치를 기준으로 구성했습니다. 하단 1~24번과 좌측 ‘경차 1~8’은 경차 주차면입니다.</div>
+        <div class="sub">A~I열은 각 열을 상·중·하로 나누고, 좌측·이중주차·경차 구역은 위치별로 묶었습니다.</div>
       </div>
     </div>
-    <div class="mode-banner" id="modeBanner" role="status">반납 위치 선택 중입니다. 배치도에서 주차면을 선택해 주세요.</div>
+    <div class="mode-banner" id="modeBanner" role="status">반납 위치 선택 중입니다. 배치도에서 가까운 구역을 선택해 주세요.</div>
     <div class="map-mobile-tools" id="mapMobileTools" aria-label="모바일 주차장 지도 도구">
       <button class="btn" type="button" id="mapZoomOutBtn" aria-label="주차장 지도 축소">−</button>
       <button class="btn" type="button" id="mapZoomResetBtn" aria-label="주차장 지도 100퍼센트">100%</button>
@@ -1081,15 +1121,13 @@ body::before{
     </div>
     <div class="map-scroll" id="mapViewport">
       <div class="map-stage" id="mapStage">
-        <div class="parking-map" id="parkingMap" aria-label="주차면 배치도"></div>
+        <div class="parking-map" id="parkingMap" aria-label="주차 구역 배치도"></div>
       </div>
     </div>
     <div class="legend">
-      <span><i class="normal"></i> 일반 주차면</span>
-      <span><i class="small"></i> 경차 주차면</span>
-      <span><i class="double"></i> 이중주차</span>
-      <span><i class="occupied"></i> 회사차량 위치</span>
-      <span><i class="selected"></i> 반납 선택 위치</span>
+      <span><i class="normal"></i> 선택 가능 구역</span>
+      <span><i class="occupied"></i> 회사차량 현재 구역</span>
+      <span><i class="selected"></i> 선택한 구역</span>
     </div>
   </section>
 
@@ -1123,7 +1161,7 @@ body::before{
         </div>
       </div>
       <div class="return-panel">
-        <div class="return-help">배치도에서 실제 반납한 주차면을 클릭하면 아래 위치에 자동 등록됩니다.</div>
+        <div class="return-help">배치도에서 실제 반납 위치와 가까운 구역을 클릭하면 아래 위치에 자동 등록됩니다.</div>
         <div class="field">
           <label for="returnName">반납자 이름<span class="required-mark" aria-hidden="true">*</span></label>
           <input id="returnName" placeholder="이름 입력" maxlength="50" autocomplete="name" required>
@@ -1168,15 +1206,6 @@ body::before{
       <div class="log-summary" id="tripLogList"></div>
     </section>
 
-    <section class="panel" id="historyPanel" aria-labelledby="historyTitle">
-      <div class="panel-head">
-        <div>
-          <h2 id="historyTitle">최근 사용 이력</h2>
-          <div class="sub">차량 사용/반납 시간과 등록 위치를 확인합니다.</div>
-        </div>
-      </div>
-      <div class="history-list" id="historyList"></div>
-    </section>
   </aside>
 </main>
 
@@ -1441,45 +1470,54 @@ const PHOTO_START_QUALITY = 0.72;
 const PHOTO_MIN_QUALITY = 0.42;
 const PHOTO_RETENTION_COUNT = 10; // 최근 반납 사진 10개만 유지
 
-/*
-  사진 기준 배치
-  - 상단: 1~14 + 사무실 + 입구 + 출구
-  - A/B: 각 15면 단일 열
-  - C: 14면 단일 열, A/B보다 위쪽 1행만큼 내려가며 하단 정렬
-  - D/E/F: 각 15면 단일 열
-  - G/H: 각 15면 단일 열
-  - I: 13면 단일 열, G/H와 상단 정렬
-  - 이중주차 A: 좌측 상단 주차면 위의 대형 1면
-  - 이중주차 B: I열 우측의 대형 1면
-  - 좌측: 1~6 일반 주차면, 경차1~8, 하단 1~15 일반 주차면
-  - 최하단: 경차 1~24 + 출구 + 입구
-*/
+/* 실제 배치 방향을 유지하면서, 번호 대신 등록하기 쉬운 구역 단위로 관리합니다. */
 const groups = [
-  {id:'TOP', kind:'row', count:14, x:168, y:24, w:36, h:74, small:false, prefix:'상단'},
-  {id:'A', kind:'singleCol', count:15, x:238, y:122, w:162, h:24, prefix:'A', labeled:true},
-  {id:'B', kind:'singleCol', count:15, x:479, y:122, w:162, h:24, prefix:'B', labeled:true},
-  {id:'C', kind:'singleCol', count:14, x:720, y:146, w:162, h:24, prefix:'C', labeled:true},
-  {id:'D', kind:'singleCol', count:15, x:238, y:539, w:162, h:24, prefix:'D', labeled:true},
-  {id:'E', kind:'singleCol', count:15, x:479, y:539, w:162, h:24, prefix:'E', labeled:true},
-  {id:'F', kind:'singleCol', count:15, x:720, y:539, w:162, h:24, prefix:'F', labeled:true},
-  {id:'G', kind:'singleCol', count:15, x:238, y:955, w:162, h:24, prefix:'G', labeled:true},
-  {id:'H', kind:'singleCol', count:15, x:479, y:955, w:162, h:24, prefix:'H', labeled:true},
-  {id:'I', kind:'singleCol', count:13, x:720, y:955, w:162, h:24, prefix:'I', labeled:true},
-  {id:'DOUBLE_A', kind:'largeSlot', slotId:'이중주차A', label:'이중주차 A', x:80, y:24, w:34, h:422},
-  {id:'DOUBLE_B', kind:'largeSlot', slotId:'이중주차B', label:'이중주차 B', x:900, y:955, w:44, h:368},
-  {id:'LEFT6', kind:'singleCol', count:6, x:80, y:465, w:30, h:57, prefix:'좌측상단'},
-  // 좌측 경차 영역과 상/하단 일반 주차면 사이에 여백을 확보해 테두리 겹침 방지
-  {id:'LEFT15', kind:'singleCol', count:15, x:80, y:980, w:80, h:24, prefix:'좌측하단'},
-  {id:'SMALL8', kind:'smallLabels', count:8, x:82, y:812, w:61, h:19, prefix:'경차'},
-  {id:'BOTTOM', kind:'row', count:24, x:80, y:1370, w:30, h:62, small:true, prefix:'하단경차'}
+  {id:'TOP',kind:'zone',slotId:'상단',label:'상단 주차 구역',x:155,y:20,w:470,h:80,cls:'edge-zone'},
+  {id:'DOUBLE_A',kind:'zone',slotId:'이중주차A',label:'이중주차\nA',x:25,y:20,w:80,h:330,cls:'edge-zone double-zone'},
+
+  {id:'A_TOP',kind:'zone',slotId:'A열-상',label:'A열\n상',x:155,y:135,w:170,h:92,cls:'compact'},
+  {id:'A_MID',kind:'zone',slotId:'A열-중',label:'A열\n중',x:155,y:227,w:170,h:92,cls:'compact'},
+  {id:'A_BOTTOM',kind:'zone',slotId:'A열-하',label:'A열\n하',x:155,y:319,w:170,h:92,cls:'compact'},
+  {id:'B_TOP',kind:'zone',slotId:'B열-상',label:'B열\n상',x:370,y:135,w:170,h:92,cls:'compact'},
+  {id:'B_MID',kind:'zone',slotId:'B열-중',label:'B열\n중',x:370,y:227,w:170,h:92,cls:'compact'},
+  {id:'B_BOTTOM',kind:'zone',slotId:'B열-하',label:'B열\n하',x:370,y:319,w:170,h:92,cls:'compact'},
+  {id:'C_TOP',kind:'zone',slotId:'C열-상',label:'C열\n상',x:585,y:135,w:170,h:92,cls:'compact'},
+  {id:'C_MID',kind:'zone',slotId:'C열-중',label:'C열\n중',x:585,y:227,w:170,h:92,cls:'compact'},
+  {id:'C_BOTTOM',kind:'zone',slotId:'C열-하',label:'C열\n하',x:585,y:319,w:170,h:92,cls:'compact'},
+
+  {id:'LEFT_TOP',kind:'zone',slotId:'좌상단',label:'좌상단\n구역',x:25,y:380,w:105,h:195,cls:'edge-zone'},
+  {id:'D_TOP',kind:'zone',slotId:'D열-상',label:'D열\n상',x:155,y:465,w:170,h:92,cls:'compact'},
+  {id:'D_MID',kind:'zone',slotId:'D열-중',label:'D열\n중',x:155,y:557,w:170,h:92,cls:'compact'},
+  {id:'D_BOTTOM',kind:'zone',slotId:'D열-하',label:'D열\n하',x:155,y:649,w:170,h:92,cls:'compact'},
+  {id:'E_TOP',kind:'zone',slotId:'E열-상',label:'E열\n상',x:370,y:465,w:170,h:92,cls:'compact'},
+  {id:'E_MID',kind:'zone',slotId:'E열-중',label:'E열\n중',x:370,y:557,w:170,h:92,cls:'compact'},
+  {id:'E_BOTTOM',kind:'zone',slotId:'E열-하',label:'E열\n하',x:370,y:649,w:170,h:92,cls:'compact'},
+  {id:'F_TOP',kind:'zone',slotId:'F열-상',label:'F열\n상',x:585,y:465,w:170,h:92,cls:'compact'},
+  {id:'F_MID',kind:'zone',slotId:'F열-중',label:'F열\n중',x:585,y:557,w:170,h:92,cls:'compact'},
+  {id:'F_BOTTOM',kind:'zone',slotId:'F열-하',label:'F열\n하',x:585,y:649,w:170,h:92,cls:'compact'},
+
+  {id:'LEFT_SMALL',kind:'zone',slotId:'좌측경차',label:'좌측 경차\n구역',x:25,y:605,w:105,h:160,cls:'edge-zone small-zone'},
+  {id:'LEFT_BOTTOM',kind:'zone',slotId:'좌하단',label:'좌하단\n구역',x:25,y:795,w:105,h:310,cls:'edge-zone'},
+  {id:'G_TOP',kind:'zone',slotId:'G열-상',label:'G열\n상',x:155,y:795,w:170,h:92,cls:'compact'},
+  {id:'G_MID',kind:'zone',slotId:'G열-중',label:'G열\n중',x:155,y:887,w:170,h:92,cls:'compact'},
+  {id:'G_BOTTOM',kind:'zone',slotId:'G열-하',label:'G열\n하',x:155,y:979,w:170,h:92,cls:'compact'},
+  {id:'H_TOP',kind:'zone',slotId:'H열-상',label:'H열\n상',x:370,y:795,w:170,h:92,cls:'compact'},
+  {id:'H_MID',kind:'zone',slotId:'H열-중',label:'H열\n중',x:370,y:887,w:170,h:92,cls:'compact'},
+  {id:'H_BOTTOM',kind:'zone',slotId:'H열-하',label:'H열\n하',x:370,y:979,w:170,h:92,cls:'compact'},
+  {id:'I_TOP',kind:'zone',slotId:'I열-상',label:'I열\n상',x:585,y:795,w:170,h:92,cls:'compact'},
+  {id:'I_MID',kind:'zone',slotId:'I열-중',label:'I열\n중',x:585,y:887,w:170,h:92,cls:'compact'},
+  {id:'I_BOTTOM',kind:'zone',slotId:'I열-하',label:'I열\n하',x:585,y:979,w:170,h:92,cls:'compact'},
+  {id:'DOUBLE_B',kind:'zone',slotId:'이중주차B',label:'이중주차\nB',x:790,y:795,w:80,h:276,cls:'edge-zone double-zone'},
+
+  {id:'BOTTOM_SMALL',kind:'zone',slotId:'하단경차',label:'하단 경차 구역',x:155,y:1140,w:605,h:105,cls:'edge-zone small-zone'}
 ];
 
 const facilities = [
-  {text:'사무실',x:672,y:24,w:128,h:74,cls:''},
-  {text:'입구',x:800,y:24,w:80,h:74,cls:'gate'},
-  {text:'출구',x:880,y:24,w:82,h:74,cls:'gate'},
-  {text:'출구',x:800,y:1370,w:81,h:74,cls:'gate'},
-  {text:'입구',x:881,y:1370,w:81,h:74,cls:'gate'}
+  {text:'사무실',x:640,y:20,w:100,h:80,cls:'zone-facility'},
+  {text:'입구',x:740,y:20,w:65,h:80,cls:'gate zone-facility'},
+  {text:'출구',x:805,y:20,w:65,h:80,cls:'gate zone-facility'},
+  {text:'출구',x:770,y:1140,w:50,h:105,cls:'gate zone-facility'},
+  {text:'입구',x:820,y:1140,w:50,h:105,cls:'gate zone-facility'}
 ];
 
 const baselineManagement = {
@@ -1501,7 +1539,7 @@ const initialState = {
   car:{
     name:'투싼ix',
     status:'available',
-    slot:'A01',
+    slot:'A열-상',
     currentUser:'',
     useStartedAt:''
   },
@@ -1520,13 +1558,13 @@ let returnPreviewUrl = '';
 let lastFocusedElement = null;
 let dbPromise = null;
 let tripLogPhotoUrls = [];
-let mapScale = window.matchMedia('(max-width:720px)').matches ? 0.7 : 1; // 모바일 기본 70%, PC 기본 100%
+let mapScale = 1;
 let lastMobileLayout = window.matchMedia('(max-width:720px)').matches;
 let mapResizeTimer = null;
 let mapTouchStart = null;
 let suppressMapClickUntil = 0;
-const MAP_WIDTH = 1040;
-const MAP_HEIGHT = 1480;
+const MAP_WIDTH = 900;
+const MAP_HEIGHT = 1280;
 
 function employeeEmail(employeeNo){ return `${employeeNo}@${AUTH_EMAIL_DOMAIN}`; }
 function firebasePasswordForLogin(rawPassword,profile=null){
@@ -1658,7 +1696,28 @@ async function handleAuthenticatedUser(user){
 
 function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
 function normalizeSlotId(value=''){
-  return String(value).replace(/^([A-I]\d{2})-[LR]$/,'$1');
+  const slot=String(value).replace(/^([A-I]\d{2})-[LR]$/,'$1').trim();
+  if(!slot) return '';
+  if(groups.some(g=>g.kind==='zone' && g.slotId===slot)) return slot;
+  const columnMatch=slot.match(/^([A-I])(\d{1,2})$/i);
+  if(columnMatch){
+    const column=columnMatch[1].toUpperCase();
+    const number=Number(columnMatch[2]);
+    const section=number<=5?'상':number<=10?'중':'하';
+    return `${column}열-${section}`;
+  }
+  if(slot==='A-C열') return 'B열-중';
+  if(slot==='D-F열') return 'E열-중';
+  if(slot==='G-I열') return 'H열-중';
+  if(slot==='좌측A') return '좌상단';
+  if(slot==='좌측B') return '좌하단';
+  if(slot==='하단') return '하단경차';
+  if(/^하단경차/.test(slot)) return '하단경차';
+  if(/^상단/.test(slot)) return '상단';
+  if(/^좌측상단/.test(slot)) return '좌상단';
+  if(/^좌측하단/.test(slot)) return '좌하단';
+  if(/^경차/.test(slot)) return '좌측경차';
+  return slot;
 }
 function normalizeLoadedState(saved){
   const savedCar={...(saved?.car||{})};
@@ -1842,7 +1901,7 @@ function createSlot(slotId,label,x,y,w,h,isSmall=false,extraClass=''){
   el.className='slot'+(isSmall?' small':'')+(extraClass?` ${extraClass}`:'');
   el.dataset.slot=slotId;
   el.textContent=label;
-  el.setAttribute('aria-label',`${slotId} 주차면`);
+  el.setAttribute('aria-label',`${slotId} 주차 구역`);
   el.style.left=x+'px';
   el.style.top=y+'px';
   el.style.width=w+'px';
@@ -1878,6 +1937,9 @@ function renderMap(){
   const fragment=document.createDocumentFragment();
 
   groups.forEach(g=>{
+    if(g.kind==='zone'){
+      fragment.appendChild(createSlot(g.slotId,g.label,g.x,g.y,g.w,g.h,false,`zone ${g.cls||''}`.trim()));
+    }
     if(g.kind==='largeSlot'){
       fragment.appendChild(createSlot(g.slotId,g.label,g.x,g.y,g.w,g.h,false,'double-parking vertical'));
     }
@@ -1945,7 +2007,7 @@ function selectParkingSlot(slot){
   }
   toast(state.car.status==='available' && state.car.slot===slotId
     ? `${slotId} · ${state.car.name} 주차 위치`
-    : `${slotId} 주차면`);
+    : `${slotId} 주차 구역`);
 }
 
 const parkingMapEl=document.getElementById('parkingMap');
@@ -2042,6 +2104,10 @@ function renderReservations(){
 function getAllParkingSlotIds(){
   const slots=[];
   groups.forEach(g=>{
+    if(g.kind==='zone'){
+      slots.push(g.slotId);
+      return;
+    }
     if(g.kind==='largeSlot'){
       slots.push(g.slotId);
       return;
@@ -2139,6 +2205,7 @@ document.getElementById('carCard').addEventListener('click',e=>{
 
 function renderHistory(){
   const list=document.getElementById('historyList');
+  if(!list) return;
   if(!state.history.length){
     list.innerHTML='<div class="empty-history">아직 사용 이력이 없습니다.</div>';
     return;
@@ -2320,7 +2387,7 @@ function renderAll(){
   modeBanner.classList.toggle('show',mapSelectionMode);
   modeBanner.textContent=useLocationMode
     ? '차량 사용 위치 선택 중입니다. 배치도에서 차량이 주차된 위치를 선택해 주세요.'
-    : '반납 위치 선택 중입니다. 배치도에서 주차면을 선택해 주세요.';
+    : '반납 위치 선택 중입니다. 배치도에서 가까운 구역을 선택해 주세요.';
   document.getElementById('returnPanel').hidden=!returnMode;
   document.body.classList.toggle('use-mode-active',useLocationMode);
   document.body.classList.toggle('return-mode-active',returnMode);
@@ -2837,7 +2904,7 @@ DB에서도 해당 내역이 삭제됩니다.`)) return;
   toast('운행일지를 DB에서 삭제했습니다.');
 });
 
-document.getElementById('historyList').addEventListener('click',async e=>{
+document.getElementById('historyList')?.addEventListener('click',async e=>{
   const button=e.target.closest('[data-delete-history]');
   if(!button) return;
   if(!isAdmin()){ toast('관리자만 사용 이력을 삭제할 수 있습니다.'); return; }
@@ -2928,20 +2995,19 @@ function applyMapScale(scale,preserveCenter=true){
   }
 }
 
-function getDesktopMapFitScale(){
+function getMapFitScale(){
   const viewport=document.getElementById('mapViewport');
   if(!viewport) return 1;
   const style=getComputedStyle(viewport);
   const horizontalPadding=(parseFloat(style.paddingLeft)||0)+(parseFloat(style.paddingRight)||0);
   const availableWidth=Math.max(0,viewport.clientWidth-horizontalPadding-2);
   const fitScale=availableWidth/MAP_WIDTH;
-  return Math.min(1,Math.max(0.75,Math.floor(fitScale*100)/100));
+  return Math.min(1.15,Math.max(0.35,Math.floor(fitScale*100)/100));
 }
 
 function syncResponsiveMapScale({resetForBreakpoint=false}={}){
-  const mobile=isMobileView();
-  if(resetForBreakpoint) mapScale=mobile?0.7:1;
-  if(!mobile) mapScale=getDesktopMapFitScale();
+  if(resetForBreakpoint) mapScale=1;
+  mapScale=getMapFitScale();
   applyMapScale(mapScale,false);
 }
 
