@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="회사 차량의 예약, 사용 상태, 반납 위치와 사진을 관리하는 웹 앱">
 <meta name="theme-color" content="#d92d20">
-<title>회사 차량 관리</title>
+<title>회사 차량 주차 관리</title>
 <style>
 :root{
   --bg:#f4f7fb;
@@ -1103,7 +1103,7 @@ body::before{
     <div class="logo" aria-hidden="true"><span>CAR</span></div>
     <div class="brand-copy">
       <div class="workspace-kicker"><span class="kicker-dot"></span>FLEET WORKSPACE</div>
-      <h1>회사 차량 관리</h1>
+      <h1>회사 차량 주차 관리</h1>
       <p>차량 예약 · 사용 상태 · 반납 위치 · 사진 · 운행일지를 한 화면에서 관리합니다.</p>
     </div>
   </div>
@@ -1243,7 +1243,7 @@ body::before{
       <div class="panel-head">
         <div>
           <h2 id="washTitle">분기별 세차 담당</h2>
-          <div class="sub">최근 90일 실제 운행자를 기준으로 분기마다 1명을 지정합니다.</div>
+          <div class="sub">현재 분기 포함 최근 2개 분기 운행자 중 최근 세차 완료자를 제외해 지정합니다.</div>
         </div>
         <span class="reservation-badge" id="washQuarterBadge">-</span>
       </div>
@@ -1429,7 +1429,7 @@ body::before{
     <div class="modal-head">
       <div>
         <h3 id="washSettingsModalTitle">세차 대상 제외 설정</h3>
-        <div class="sub">최근 90일 미운행자는 자동 제외되며, 관리자가 추가 제외할 수 있습니다.</div>
+        <div class="sub">최근 2개 분기 미운행자와 같은 기간 세차 완료자는 자동 제외됩니다.</div>
       </div>
       <button class="modal-close" data-close="washSettingsModal" aria-label="세차 대상 제외 설정 창 닫기">×</button>
     </div>
@@ -1448,7 +1448,7 @@ body::before{
     <div class="modal-head">
       <div>
         <h3 id="washAssigneeModalTitle">세차 담당자 변경</h3>
-        <div class="sub">최근 90일 운행자 중 제외되지 않은 인원만 선택할 수 있습니다.</div>
+        <div class="sub">최근 2개 분기 운행자 중 제외 대상과 최근 세차 완료자를 뺀 인원만 표시합니다.</div>
       </div>
       <button class="modal-close" data-close="washAssigneeModal" aria-label="세차 담당자 변경 창 닫기">×</button>
     </div>
@@ -2278,9 +2278,29 @@ function formatWashDate(value){
   return `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
 }
 
+function getWashCandidateWindow(referenceDate=new Date()){
+  const period=getWashPeriod(referenceDate);
+  // 현재 분기와 바로 이전 분기를 합친 2개 분기를 후보 산정 기간으로 사용합니다.
+  const start=new Date(period.year,(period.quarter-2)*3,1);
+  return {start,end:referenceDate,period};
+}
+
+function getRecentWashEmployeeNos(referenceDate=new Date()){
+  const current=getWashPeriod(referenceDate);
+  const currentIndex=current.year*4+(current.quarter-1);
+  return new Set(state.washAssignments
+    .filter(record=>{
+      const index=Number(record.year)*4+(Number(record.quarter)-1);
+      return record.status==='completed' && index>=currentIndex-1 && index<=currentIndex;
+    })
+    .map(record=>String(record.assigneeEmployeeNo||''))
+    .filter(Boolean));
+}
+
 function getWashUsageStats(referenceDate=new Date()){
-  const end=referenceDate.getTime();
-  const start=end-90*24*60*60*1000;
+  const windowRange=getWashCandidateWindow(referenceDate);
+  const end=windowRange.end.getTime();
+  const start=windowRange.start.getTime();
   const employees=Object.entries(EMPLOYEE_ACCOUNTS).map(([employeeNo,name])=>({
     employeeNo,name,tripCount:0,tripKm:0
   }));
@@ -2301,11 +2321,18 @@ function getWashUsageStats(referenceDate=new Date()){
   return employees;
 }
 
-function getWashRecommendation(referenceDate=new Date()){
+function getEligibleWashCandidates(referenceDate=new Date()){
   const excluded=new Set(state.washSettings.excludedEmployeeNos||[]);
-  const now=referenceDate.getTime();
-  const candidates=getWashUsageStats(referenceDate)
-    .filter(item=>item.tripCount>0 && !excluded.has(item.employeeNo))
+  const recentlyWashed=getRecentWashEmployeeNos(referenceDate);
+  return getWashUsageStats(referenceDate).filter(item=>
+    item.tripCount>0
+    && !excluded.has(item.employeeNo)
+    && !recentlyWashed.has(item.employeeNo)
+  );
+}
+
+function getWashRecommendation(referenceDate=new Date()){
+  const candidates=getEligibleWashCandidates(referenceDate)
     .map(item=>{
       const completed=state.washAssignments.filter(record=>
         record.status==='completed' && String(record.assigneeEmployeeNo)===item.employeeNo
@@ -2314,16 +2341,14 @@ function getWashRecommendation(referenceDate=new Date()){
       return {...item,washCount:completed.length,lastCompletedAt};
     });
   if(!candidates.length) return null;
-  const cooldownPool=candidates.filter(item=>!item.lastCompletedAt || now-item.lastCompletedAt>=60*24*60*60*1000);
-  const pool=cooldownPool.length?cooldownPool:candidates;
-  pool.sort((a,b)=>
+  candidates.sort((a,b)=>
     a.washCount-b.washCount
     || a.lastCompletedAt-b.lastCompletedAt
     || b.tripCount-a.tripCount
     || b.tripKm-a.tripKm
     || a.name.localeCompare(b.name,'ko')
   );
-  return pool[0];
+  return candidates[0];
 }
 
 function getCurrentWashAssignment(){
@@ -2364,7 +2389,7 @@ function renderWash(){
   document.getElementById('washQuarterBadge').textContent=`${period.year}년 ${period.quarter}분기`;
 
   let title='담당자 없음';
-  let meta='최근 90일 운행자가 없거나 모두 제외되어 담당자를 지정할 수 없습니다.';
+  let meta='최근 2개 분기 운행자가 없거나 제외 조건에 해당해 담당자를 지정할 수 없습니다.';
   if(assignment){
     title=assignment.assigneeName||'담당자 미지정';
     meta=completed
@@ -2405,14 +2430,21 @@ function openWashSettingsModal(){
   if(!isAdmin()){ toast('관리자만 세차 제외 인원을 설정할 수 있습니다.'); return; }
   const stats=getWashUsageStats();
   const excluded=new Set(state.washSettings.excludedEmployeeNos||[]);
+  const recentlyWashed=getRecentWashEmployeeNos();
   const list=document.getElementById('washExclusionList');
   list.innerHTML=stats
     .sort((a,b)=>b.tripCount-a.tripCount||a.name.localeCompare(b.name,'ko'))
     .map(item=>{
-      const autoExcluded=item.tripCount===0;
+      const washedRecently=recentlyWashed.has(item.employeeNo);
+      const autoExcluded=item.tripCount===0||washedRecently;
+      const statusText=washedRecently
+        ? '최근 2개 분기 세차 완료 · 자동 제외'
+        : item.tripCount===0
+          ? '최근 2개 분기 미운행 · 자동 제외'
+          : `최근 2개 분기 ${item.tripCount}회 · ${item.tripKm.toLocaleString('ko-KR')}km`;
       return `<label class="wash-person-option ${autoExcluded?'auto-excluded':''}">
         <input type="checkbox" data-wash-exclude="${escapeHtml(item.employeeNo)}" ${excluded.has(item.employeeNo)?'checked':''} ${autoExcluded?'disabled':''}>
-        <span class="wash-person-copy"><strong>${escapeHtml(item.name)} · ${escapeHtml(item.employeeNo)}</strong><span>${autoExcluded?'최근 90일 미운행 · 자동 제외':`최근 90일 ${item.tripCount}회 · ${item.tripKm.toLocaleString('ko-KR')}km`}</span></span>
+        <span class="wash-person-copy"><strong>${escapeHtml(item.name)} · ${escapeHtml(item.employeeNo)}</strong><span>${escapeHtml(statusText)}</span></span>
       </label>`;
     }).join('');
   showModal('washSettingsModal');
@@ -2425,13 +2457,11 @@ function openWashAssigneeModal(){
     toast('완료 전인 현재 분기 담당자만 변경할 수 있습니다.');
     return;
   }
-  const excluded=new Set(state.washSettings.excludedEmployeeNos||[]);
-  const candidates=getWashUsageStats()
-    .filter(item=>item.tripCount>0 && !excluded.has(item.employeeNo))
+  const candidates=getEligibleWashCandidates()
     .sort((a,b)=>b.tripCount-a.tripCount||a.name.localeCompare(b.name,'ko'));
   const select=document.getElementById('washAssigneeSelect');
   select.innerHTML=candidates.map(item=>
-    `<option value="${escapeHtml(item.employeeNo)}">${escapeHtml(item.name)} · 최근 90일 ${item.tripCount}회</option>`
+    `<option value="${escapeHtml(item.employeeNo)}">${escapeHtml(item.name)} · 최근 2개 분기 ${item.tripCount}회</option>`
   ).join('');
   if(candidates.some(item=>item.employeeNo===String(assignment.assigneeEmployeeNo))) select.value=String(assignment.assigneeEmployeeNo);
   showModal('washAssigneeModal');
@@ -3284,10 +3314,9 @@ document.getElementById('saveWashAssigneeBtn').addEventListener('click',async()=
   const select=document.getElementById('washAssigneeSelect');
   const employeeNo=String(select.value||'');
   const name=EMPLOYEE_ACCOUNTS[employeeNo];
-  const excluded=new Set(state.washSettings.excludedEmployeeNos||[]);
-  const usage=getWashUsageStats().find(item=>item.employeeNo===employeeNo);
-  if(!name || !usage?.tripCount || excluded.has(employeeNo)){
-    toast('최근 90일 운행자 중 제외되지 않은 인원을 선택해 주세요.');
+  const usage=getEligibleWashCandidates().find(item=>item.employeeNo===employeeNo);
+  if(!name || !usage){
+    toast('최근 2개 분기 운행자 중 제외 조건에 해당하지 않는 인원을 선택해 주세요.');
     return;
   }
   const current=getCurrentWashAssignment();
