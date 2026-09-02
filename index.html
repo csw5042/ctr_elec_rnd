@@ -284,7 +284,7 @@ button{cursor:pointer}
   color:#563a91;font-size:12px;font-weight:800;display:none;
 }
 .mode-banner.show{display:block}
-@media(max-width:1180px){
+@media(max-width:1320px){
   .layout{grid-template-columns:1fr}
   .side{order:-1}
 }
@@ -603,9 +603,9 @@ body::before{
 .map-return-dock{border-color:#f0c0bb!important;box-shadow:0 15px 36px rgba(16,24,40,.16)!important}
 .map-return-dock .dock-slot{color:#a8281f!important}
 
-@media(max-width:1180px){
+@media(max-width:1320px){
   .workspace-summary{padding:0 16px}
-  .layout{padding-left:16px;padding-right:16px}
+  .layout{grid-template-columns:1fr;padding-left:16px;padding-right:16px}
   .side{order:-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
   .side #returnPanel{grid-column:1/-1}
 }
@@ -979,6 +979,37 @@ body::before{
 @media(max-width:720px){
   body.use-mode-active .mobile-quick-nav{display:none}
   body.use-mode-active{padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+}
+
+/* ===== PC / Mobile responsive polish ===== */
+@media(min-width:1321px){
+  .map-scroll{scrollbar-gutter:stable both-edges}
+  .side{min-width:0}
+}
+@media(max-width:720px){
+  .topbar{
+    min-height:56px!important;padding:8px 10px!important;
+    padding-top:max(8px,env(safe-area-inset-top))!important;
+  }
+  .brand h1{font-size:13px!important}
+  .header-actions>.sync-status,
+  .header-actions>#printLogBtn,
+  #changePasswordBtn,#logoutBtn{
+    width:36px!important;height:36px!important;min-height:36px!important;
+  }
+  #loginBtn{height:36px!important;min-height:36px!important;padding:0 10px!important;font-size:11px!important}
+  .auth-user-badge{min-height:36px!important;max-width:70px!important;font-size:10px!important}
+  html{scroll-padding-top:62px!important}
+  .map-mobile-tools{top:56px!important}
+  .map-zone-strip button{min-height:42px}
+  .log-main{align-items:flex-start}
+  .log-main>span:first-child{min-width:0;overflow-wrap:anywhere}
+  .log-return{font-size:11px}
+}
+@media(max-width:420px){
+  .auth-user-badge{max-width:60px!important}
+  .log-detail-row{grid-template-columns:minmax(0,1fr) 76px}
+  .log-photo-button,.log-photo-placeholder{width:76px;height:62px}
 }
 </style>
 </head>
@@ -1490,6 +1521,8 @@ let lastFocusedElement = null;
 let dbPromise = null;
 let tripLogPhotoUrls = [];
 let mapScale = window.matchMedia('(max-width:720px)').matches ? 0.7 : 1; // 모바일 기본 70%, PC 기본 100%
+let lastMobileLayout = window.matchMedia('(max-width:720px)').matches;
+let mapResizeTimer = null;
 let mapTouchStart = null;
 let suppressMapClickUntil = 0;
 const MAP_WIDTH = 1040;
@@ -2200,7 +2233,7 @@ function renderTripLogs(){
           <div class="log-return">반납 위치 ${escapeHtml(returnSlot||'미등록')}</div>
         </div>
         ${photoKey
-          ? `<button class="log-photo-button" type="button" data-photo="${escapeHtml(photoKey)}" aria-label="${escapeHtml(item.name)} 반납 사진 크게 보기"><span class="log-photo-status">사진 불러오는 중</span><img data-trip-photo="${escapeHtml(photoKey)}" alt="${escapeHtml(item.name)} 반납 사진"></button>`
+          ? `<button class="log-photo-button" type="button" data-photo="${escapeHtml(photoKey)}" aria-label="${escapeHtml(item.name)} 반납 사진 크게 보기"><span class="log-photo-status">사진 불러오는 중</span><img data-trip-photo="${escapeHtml(photoKey)}" alt="${escapeHtml(item.name)} 반납 사진" loading="lazy" decoding="async"></button>`
           : '<div class="log-photo-placeholder">사진<br>미등록</div>'}
       </div>
       ${isAdmin()?`<div class="history-admin-actions"><button class="history-delete" type="button" data-delete-triplog="${escapeHtml(item.id)}">운행일지 삭제</button></div>`:''}
@@ -2293,7 +2326,7 @@ function renderAll(){
   document.body.classList.toggle('return-mode-active',returnMode);
   const dockText=document.getElementById('mapReturnDockText');
   if(dockText) dockText.textContent=selectedReturnSlot?`선택 위치: ${selectedReturnSlot}`:'반납 위치를 선택해 주세요.';
-  applyMapScale(mapScale,false);
+  syncResponsiveMapScale();
 }
 
 function startUseLocationMode(){
@@ -2895,6 +2928,23 @@ function applyMapScale(scale,preserveCenter=true){
   }
 }
 
+function getDesktopMapFitScale(){
+  const viewport=document.getElementById('mapViewport');
+  if(!viewport) return 1;
+  const style=getComputedStyle(viewport);
+  const horizontalPadding=(parseFloat(style.paddingLeft)||0)+(parseFloat(style.paddingRight)||0);
+  const availableWidth=Math.max(0,viewport.clientWidth-horizontalPadding-2);
+  const fitScale=availableWidth/MAP_WIDTH;
+  return Math.min(1,Math.max(0.75,Math.floor(fitScale*100)/100));
+}
+
+function syncResponsiveMapScale({resetForBreakpoint=false}={}){
+  const mobile=isMobileView();
+  if(resetForBreakpoint) mapScale=mobile?0.7:1;
+  if(!mobile) mapScale=getDesktopMapFitScale();
+  applyMapScale(mapScale,false);
+}
+
 function setMapScale(next){
   mapScale=Math.min(1.5,Math.max(0.7,Math.round(next*20)/20));
   applyMapScale(mapScale,true);
@@ -3282,13 +3332,17 @@ auth.onAuthStateChanged(async user=>{
 });
 renderAll();
 initializeFirebaseSync();
-window.addEventListener('resize',()=>{
-  if(!isMobileView()) return;
-  applyMapScale(mapScale,false);
-});
-window.addEventListener('orientationchange',()=>{
-  setTimeout(()=>applyMapScale(mapScale,false),180);
-});
+function scheduleResponsiveMapSync(delay=100){
+  clearTimeout(mapResizeTimer);
+  mapResizeTimer=setTimeout(()=>{
+    const mobile=isMobileView();
+    const crossedBreakpoint=mobile!==lastMobileLayout;
+    lastMobileLayout=mobile;
+    syncResponsiveMapScale({resetForBreakpoint:crossedBreakpoint});
+  },delay);
+}
+window.addEventListener('resize',()=>scheduleResponsiveMapSync());
+window.addEventListener('orientationchange',()=>scheduleResponsiveMapSync(180));
 window.addEventListener('beforeunload',()=>firebaseUnsubscribe?.());
 </script>
 </body>
