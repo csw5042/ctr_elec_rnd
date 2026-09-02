@@ -526,6 +526,10 @@ body::before{
 }
 .slot.double-parking:hover{border-color:#d92d20;background:#fff3f1}
 .slot.double-parking.car-here{background:#fff0ee;border-color:#ef6f64}
+.slot.double-parking.vertical{
+  writing-mode:vertical-rl;text-orientation:mixed;white-space:normal;
+  letter-spacing:.08em;padding:12px 5px;
+}
 .facility{border-color:#b6bbc3;background:#f4f5f6;color:#4d535b;border-radius:4px;font-size:12px}
 .gate{background:#f1f2f4;color:#2f343a}
 .legend{padding:13px 20px 17px;border-top:1px solid #f0f1f3;background:#fff;color:#7d848e;font-size:11px;gap:16px}
@@ -1430,8 +1434,8 @@ const groups = [
   {id:'G', kind:'singleCol', count:15, x:238, y:955, w:162, h:24, prefix:'G', labeled:true},
   {id:'H', kind:'singleCol', count:15, x:479, y:955, w:162, h:24, prefix:'H', labeled:true},
   {id:'I', kind:'singleCol', count:13, x:720, y:955, w:162, h:24, prefix:'I', labeled:true},
-  {id:'DOUBLE_A', kind:'largeSlot', slotId:'이중주차A', label:'이중주차\nA', x:80, y:370, w:82, h:76},
-  {id:'DOUBLE_B', kind:'largeSlot', slotId:'이중주차B', label:'이중주차\nB', x:900, y:955, w:112, h:96},
+  {id:'DOUBLE_A', kind:'largeSlot', slotId:'이중주차A', label:'이중주차 A', x:80, y:24, w:34, h:422},
+  {id:'DOUBLE_B', kind:'largeSlot', slotId:'이중주차B', label:'이중주차 B', x:900, y:955, w:44, h:368},
   {id:'LEFT6', kind:'singleCol', count:6, x:80, y:465, w:30, h:57, prefix:'좌측상단'},
   // 좌측 경차 영역과 상/하단 일반 주차면 사이에 여백을 확보해 테두리 겹침 방지
   {id:'LEFT15', kind:'singleCol', count:15, x:80, y:980, w:80, h:24, prefix:'좌측하단'},
@@ -1842,7 +1846,7 @@ function renderMap(){
 
   groups.forEach(g=>{
     if(g.kind==='largeSlot'){
-      fragment.appendChild(createSlot(g.slotId,g.label,g.x,g.y,g.w,g.h,false,'double-parking'));
+      fragment.appendChild(createSlot(g.slotId,g.label,g.x,g.y,g.w,g.h,false,'double-parking vertical'));
     }
     if(g.kind==='row'){
       for(let i=1;i<=g.count;i++){
