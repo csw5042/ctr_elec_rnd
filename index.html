@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="회사 차량의 예약, 사용 상태, 반납 위치와 사진을 관리하는 웹 앱">
 <meta name="theme-color" content="#d92d20">
-<title>회사 차량 관리</title>
+<title>회사 차량 주차 관리</title>
 <style>
 :root{
   --bg:#f4f7fb;
@@ -1103,7 +1103,7 @@ body::before{
     <div class="logo" aria-hidden="true"><span>CAR</span></div>
     <div class="brand-copy">
       <div class="workspace-kicker"><span class="kicker-dot"></span>FLEET WORKSPACE</div>
-      <h1>회사 차량 관리</h1>
+      <h1>회사 차량 주차 관리</h1>
       <p>차량 예약 · 사용 상태 · 반납 위치 · 사진 · 운행일지를 한 화면에서 관리합니다.</p>
     </div>
   </div>
@@ -1443,6 +1443,28 @@ body::before{
   </div>
 </div>
 
+<div class="modal-bg" id="washAssigneeModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="washAssigneeModalTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="washAssigneeModalTitle">세차 담당자 변경</h3>
+        <div class="sub">최근 90일 운행자 중 제외되지 않은 인원만 선택할 수 있습니다.</div>
+      </div>
+      <button class="modal-close" data-close="washAssigneeModal" aria-label="세차 담당자 변경 창 닫기">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field" style="margin-bottom:0">
+        <label for="washAssigneeSelect">변경할 담당자</label>
+        <select id="washAssigneeSelect"></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" data-close="washAssigneeModal">취소</button>
+      <button class="btn primary" type="button" id="saveWashAssigneeBtn">담당자 변경 저장</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="photoModal" aria-hidden="true">
   <div class="modal photo-view" role="dialog" aria-modal="true" aria-labelledby="photoModalTitle">
     <div class="modal-head">
@@ -1552,7 +1574,7 @@ const EMPLOYEE_ACCOUNTS = Object.freeze({
   '106458':'최성우','106417':'이찬석','106430':'류보경','106434':'김현종'
 });
 // 사용자 제공 2026년 1~7월 차량 사용 기록입니다.
-// 세차 담당 추천에만 사용하며 운행일지·인쇄 양식에는 추가하지 않습니다.
+// 세차 담당 자동 지정 계산에만 사용하며 운행일지·인쇄 양식에는 추가하지 않습니다.
 const WASH_USAGE_SEED = Object.freeze([
   ['2026-07-29','박준혁'],['2026-07-28','박준혁'],['2026-07-27','박준혁'],
   ['2026-07-23','오태섭'],['2026-07-09','김현종'],['2026-07-03','박세준'],
@@ -2306,7 +2328,25 @@ function getWashRecommendation(referenceDate=new Date()){
 
 function getCurrentWashAssignment(){
   const period=getWashPeriod();
-  return state.washAssignments.find(record=>Number(record.year)===period.year && Number(record.quarter)===period.quarter)||null;
+  const stored=state.washAssignments.find(record=>Number(record.year)===period.year && Number(record.quarter)===period.quarter);
+  if(stored) return stored;
+  const recommendation=getWashRecommendation();
+  if(!recommendation) return null;
+  return {
+    id:period.id,year:period.year,quarter:period.quarter,
+    assigneeEmployeeNo:recommendation.employeeNo,assigneeName:recommendation.name,
+    status:'assigned',assignedAt:new Date().toISOString(),completedAt:'',
+    assignmentSource:'auto',tripCountAtAssignment:recommendation.tripCount
+  };
+}
+
+function ensureStoredWashAssignment(assignment){
+  const period=getWashPeriod();
+  let stored=state.washAssignments.find(record=>Number(record.year)===period.year && Number(record.quarter)===period.quarter);
+  if(stored) return stored;
+  stored=clone(assignment);
+  state.washAssignments.push(stored);
+  return stored;
 }
 
 function getPendingWashAssignmentForCurrentUser(){
@@ -2320,26 +2360,22 @@ function renderWash(){
   if(!card) return;
   const period=getWashPeriod();
   const assignment=getCurrentWashAssignment();
-  const recommendation=assignment?null:getWashRecommendation();
   const completed=assignment?.status==='completed';
   document.getElementById('washQuarterBadge').textContent=`${period.year}년 ${period.quarter}분기`;
 
-  let title='담당자 미지정';
-  let meta='최근 90일 운행자가 없거나 모두 제외되어 추천할 수 없습니다.';
+  let title='담당자 없음';
+  let meta='최근 90일 운행자가 없거나 모두 제외되어 담당자를 지정할 수 없습니다.';
   if(assignment){
     title=assignment.assigneeName||'담당자 미지정';
     meta=completed
       ? `${formatWashDate(assignment.completedAt)} 외부·내부 세차 완료 · 분기 1회 완료`
-      : `${formatWashDate(period.end)}까지 외부·내부 세차 후 담당자 본인이 사진과 완료 체크`;
-  }else if(recommendation){
-    title=`${recommendation.name} 추천`;
-    meta=`최근 90일 ${recommendation.tripCount}회 운행 · 세차 완료 ${recommendation.washCount}회 · 관리자 지정 대기`;
+      : `${assignment.assignmentSource==='admin'?'관리자 지정':'자동 지정'} · ${formatWashDate(period.end)}까지 외부·내부 세차 후 사진과 완료 체크`;
   }
 
   const isAssignee=!!assignment && canModify()
     && String(currentSession?.employeeNo||'')===String(assignment.assigneeEmployeeNo||'');
   const quarterRows=[1,2,3,4].map(quarter=>{
-    const record=state.washAssignments.find(item=>Number(item.year)===period.year && Number(item.quarter)===quarter);
+    const record=quarter===period.quarter?assignment:state.washAssignments.find(item=>Number(item.year)===period.year && Number(item.quarter)===quarter);
     const cls=[quarter===period.quarter?'current':'',record?.status==='completed'?'done':''].filter(Boolean).join(' ');
     const text=record
       ? `${record.assigneeName||'-'} · ${record.status==='completed'?'완료':'담당'}`
@@ -2349,12 +2385,12 @@ function renderWash(){
 
   card.innerHTML=`
     <div class="wash-current ${completed?'completed':''}">
-      <div class="wash-label">${completed?'COMPLETED':assignment?'ASSIGNED':'RECOMMENDED'}</div>
+      <div class="wash-label">${completed?'COMPLETED':assignment?'ASSIGNED':'NO ASSIGNEE'}</div>
       <div class="wash-assignee">${escapeHtml(title)}</div>
       <div class="wash-meta">${escapeHtml(meta)}</div>
       <div class="wash-actions">
         ${isAdmin()?'<button class="btn" type="button" data-wash-settings>제외 인원 설정</button>':''}
-        ${isAdmin() && !assignment && recommendation?'<button class="btn primary" type="button" data-assign-wash>추천 담당자 지정</button>':''}
+        ${isAdmin() && assignment && !completed?'<button class="btn primary" type="button" data-change-wash-assignee>담당자 변경</button>':''}
         ${isAssignee && !completed?'<button class="btn primary wash-complete-check" type="button" data-complete-wash>세차 완료 체크</button>':''}
       </div>
       ${assignment && !completed && !isAssignee
@@ -2380,6 +2416,26 @@ function openWashSettingsModal(){
       </label>`;
     }).join('');
   showModal('washSettingsModal');
+}
+
+function openWashAssigneeModal(){
+  if(!isAdmin()){ toast('관리자만 세차 담당자를 변경할 수 있습니다.'); return; }
+  const assignment=getCurrentWashAssignment();
+  if(!assignment || assignment.status==='completed'){
+    toast('완료 전인 현재 분기 담당자만 변경할 수 있습니다.');
+    return;
+  }
+  const excluded=new Set(state.washSettings.excludedEmployeeNos||[]);
+  const candidates=getWashUsageStats()
+    .filter(item=>item.tripCount>0 && !excluded.has(item.employeeNo))
+    .sort((a,b)=>b.tripCount-a.tripCount||a.name.localeCompare(b.name,'ko'));
+  const select=document.getElementById('washAssigneeSelect');
+  select.innerHTML=candidates.map(item=>
+    `<option value="${escapeHtml(item.employeeNo)}">${escapeHtml(item.name)} · 최근 90일 ${item.tripCount}회</option>`
+  ).join('');
+  if(candidates.some(item=>item.employeeNo===String(assignment.assigneeEmployeeNo))) select.value=String(assignment.assigneeEmployeeNo);
+  showModal('washAssigneeModal');
+  setTimeout(()=>select.focus(),60);
 }
 
 function resetWashCompletionPhotos(){
@@ -3160,32 +3216,8 @@ document.getElementById('washCard').addEventListener('click',async e=>{
     return;
   }
 
-  const assignButton=e.target.closest('[data-assign-wash]');
-  if(assignButton){
-    if(!isAdmin()){ toast('관리자만 세차 담당자를 지정할 수 있습니다.'); return; }
-    if(!firebaseReady){ toast('DB 연결 후 세차 담당자를 지정해 주세요.'); return; }
-    if(getCurrentWashAssignment()){ toast('이번 분기 세차 담당자가 이미 지정되었습니다.'); renderWash(); return; }
-    const recommendation=getWashRecommendation();
-    if(!recommendation){ toast('지정 가능한 최근 운행자가 없습니다.'); return; }
-    const period=getWashPeriod();
-    if(!confirm(`${period.year}년 ${period.quarter}분기 세차 담당자로 ${recommendation.name}님을 지정하시겠습니까?`)) return;
-    assignButton.disabled=true;
-    const backup=clone(state.washAssignments);
-    state.washAssignments.push({
-      id:period.id,year:period.year,quarter:period.quarter,
-      assigneeEmployeeNo:recommendation.employeeNo,assigneeName:recommendation.name,
-      status:'assigned',assignedAt:new Date().toISOString(),completedAt:''
-    });
-    const synced=await saveState();
-    if(!synced){
-      state.washAssignments=backup;
-      saveLocalState();
-      renderWash();
-      toast('DB 저장에 실패하여 담당자 지정을 취소했습니다.');
-      return;
-    }
-    renderWash();
-    toast(`${recommendation.name}님을 이번 분기 세차 담당자로 지정했습니다.`);
+  if(e.target.closest('[data-change-wash-assignee]')){
+    openWashAssigneeModal();
     return;
   }
 
@@ -3221,11 +3253,12 @@ document.getElementById('saveWashCompleteBtn').addEventListener('click',async()=
     if(!exteriorResult?.remote || !interiorResult?.remote){
       throw new Error('세차 사진의 Firebase 저장이 완료되지 않았습니다.');
     }
-    assignment.status='completed';
-    assignment.completedAt=new Date().toISOString();
-    assignment.completedBy=currentSession.employeeNo;
-    assignment.exteriorPhotoKey=exteriorPhotoKey;
-    assignment.interiorPhotoKey=interiorPhotoKey;
+    const stored=ensureStoredWashAssignment(assignment);
+    stored.status='completed';
+    stored.completedAt=new Date().toISOString();
+    stored.completedBy=currentSession.employeeNo;
+    stored.exteriorPhotoKey=exteriorPhotoKey;
+    stored.interiorPhotoKey=interiorPhotoKey;
     const synced=await saveState();
     if(!synced) throw new Error('세차 완료 기록의 DB 저장에 실패했습니다.');
 
@@ -3243,6 +3276,51 @@ document.getElementById('saveWashCompleteBtn').addEventListener('click',async()=
     renderWash();
     toast('세차 사진 또는 완료 기록을 저장하지 못했습니다. 다시 시도해 주세요.');
   }
+});
+
+document.getElementById('saveWashAssigneeBtn').addEventListener('click',async()=>{
+  if(!isAdmin()){ toast('관리자만 세차 담당자를 변경할 수 있습니다.'); return; }
+  if(!firebaseReady){ toast('DB 연결 후 담당자를 변경해 주세요.'); return; }
+  const select=document.getElementById('washAssigneeSelect');
+  const employeeNo=String(select.value||'');
+  const name=EMPLOYEE_ACCOUNTS[employeeNo];
+  const excluded=new Set(state.washSettings.excludedEmployeeNos||[]);
+  const usage=getWashUsageStats().find(item=>item.employeeNo===employeeNo);
+  if(!name || !usage?.tripCount || excluded.has(employeeNo)){
+    toast('최근 90일 운행자 중 제외되지 않은 인원을 선택해 주세요.');
+    return;
+  }
+  const current=getCurrentWashAssignment();
+  if(!current || current.status==='completed'){ toast('변경 가능한 담당 기록이 없습니다.'); return; }
+  if(!confirm(`이번 분기 세차 담당자를 ${name}님으로 변경하시겠습니까?`)) return;
+
+  const button=document.getElementById('saveWashAssigneeBtn');
+  const backup=clone(state.washAssignments);
+  button.disabled=true;
+  const stored=ensureStoredWashAssignment(current);
+  stored.assigneeEmployeeNo=employeeNo;
+  stored.assigneeName=name;
+  stored.status='assigned';
+  stored.assignedAt=new Date().toISOString();
+  stored.assignmentSource='admin';
+  stored.tripCountAtAssignment=usage.tripCount;
+  stored.completedAt='';
+  delete stored.completedBy;
+  delete stored.exteriorPhotoKey;
+  delete stored.interiorPhotoKey;
+  const synced=await saveState();
+  if(!synced){
+    state.washAssignments=backup;
+    saveLocalState();
+    button.disabled=false;
+    renderWash();
+    toast('DB 저장에 실패하여 담당자 변경을 취소했습니다.');
+    return;
+  }
+  hideModal('washAssigneeModal');
+  button.disabled=false;
+  renderWash();
+  toast(`${name}님으로 세차 담당자를 변경했습니다.`);
 });
 
 document.getElementById('saveWashSettingsBtn').addEventListener('click',async()=>{
