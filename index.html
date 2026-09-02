@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="회사 차량의 예약, 사용 상태, 반납 위치와 사진을 관리하는 웹 앱">
 <meta name="theme-color" content="#d92d20">
-<title>회사 차량 관리</title>
+<title>회사 차량 주차 관리</title>
 <style>
 :root{
   --bg:#f4f7fb;
@@ -1047,9 +1047,53 @@ body::before{
   max-height:none!important;overflow:visible!important;
   overscroll-behavior:auto!important;touch-action:pan-y;
 }
+.wash-card{padding:18px 20px 20px}
+.wash-current{
+  padding:16px;border:1px solid #ead7d3;border-radius:15px;
+  background:linear-gradient(145deg,#fffafa,#fff3f1);
+}
+.wash-current.completed{border-color:#c9e8d8;background:linear-gradient(145deg,#fbfffd,#eaf8f1)}
+.wash-label{color:#8a5050;font-size:10px;font-weight:950;letter-spacing:.08em}
+.wash-assignee{margin-top:7px;font-size:22px;font-weight:950;color:#272a2f}
+.wash-meta{margin-top:6px;color:#767d87;font-size:11.5px;line-height:1.55}
+.wash-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.wash-actions .btn{flex:1;min-width:120px}
+.wash-complete-check{display:inline-flex;align-items:center;gap:7px}
+.wash-complete-check::before{content:'✓';display:grid;place-items:center;width:18px;height:18px;border-radius:5px;background:#fff;color:#168653;font-weight:950}
+.wash-year-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:12px}
+.wash-quarter-item{padding:9px 6px;border:1px solid #e6e8ec;border-radius:10px;background:#fafbfc;text-align:center}
+.wash-quarter-item strong{display:block;font-size:11px;color:#4c525a}
+.wash-quarter-item span{display:block;margin-top:4px;font-size:9.5px;color:#8a9099;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wash-quarter-item.done{background:#eef9f3;border-color:#cae8d9}.wash-quarter-item.done span{color:#168653}
+.wash-quarter-item.current{border-color:#e8a49e;background:#fff4f2}
+.wash-exclusion-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:50vh;overflow:auto}
+.wash-person-option{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid #e3e6ea;border-radius:11px;background:#fafbfc}
+.wash-person-option input{width:18px;height:18px;accent-color:var(--primary);flex:none}
+.wash-person-copy{min-width:0}.wash-person-copy strong{display:block;font-size:12px;color:#343940}.wash-person-copy span{display:block;margin-top:2px;font-size:10px;color:#8a9099}
+.wash-person-option.auto-excluded{opacity:.58;background:#f3f4f5}
+.wash-photo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.wash-photo-field{display:flex;flex-direction:column;gap:7px}
+.wash-photo-field>strong{font-size:12px;color:#454b53}
+.wash-photo-box{
+  min-height:180px;border:1px dashed #c7cdd5;border-radius:14px;background:#f8f9fa;
+  display:grid;place-items:center;overflow:hidden;cursor:pointer;text-align:center;color:#7d848e;font-size:11px;font-weight:800;
+}
+.wash-photo-box:hover{border-color:#df746b;background:#fff8f7}
+.wash-photo-box img{display:none;width:100%;height:180px;object-fit:cover}
+.wash-photo-box.has-photo img{display:block}.wash-photo-box.has-photo span{display:none}
+.wash-photo-box input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 @media(max-width:720px){
   .map-scroll{padding:10px!important}
   .legend{padding-top:10px}
+  #washPanel{order:3}
+  #parkingPanel{order:4}
+  #returnPanel{order:5}
+  #tripLogPanel{order:6}
+  .mobile-quick-nav{grid-template-columns:repeat(5,1fr)}
+  .wash-card{padding:14px 16px 16px}
+  .wash-exclusion-list{grid-template-columns:1fr;max-height:58vh}
+  .wash-photo-grid{grid-template-columns:1fr}
+  .wash-photo-box{min-height:150px}.wash-photo-box img{height:150px}
 }
 </style>
 </head>
@@ -1059,7 +1103,7 @@ body::before{
     <div class="logo" aria-hidden="true"><span>CAR</span></div>
     <div class="brand-copy">
       <div class="workspace-kicker"><span class="kicker-dot"></span>FLEET WORKSPACE</div>
-      <h1>회사 차량 관리</h1>
+      <h1>회사 차량 주차 관리</h1>
       <p>차량 예약 · 사용 상태 · 반납 위치 · 사진 · 운행일지를 한 화면에서 관리합니다.</p>
     </div>
   </div>
@@ -1193,6 +1237,17 @@ body::before{
           <button class="btn primary" id="completeReturnBtn">반납 완료</button>
         </div>
       </div>
+    </section>
+
+    <section class="panel" id="washPanel" aria-labelledby="washTitle">
+      <div class="panel-head">
+        <div>
+          <h2 id="washTitle">분기별 세차 담당</h2>
+          <div class="sub">최근 90일 실제 운행자를 기준으로 분기마다 1명을 지정합니다.</div>
+        </div>
+        <span class="reservation-badge" id="washQuarterBadge">-</span>
+      </div>
+      <div class="wash-card" id="washCard"></div>
     </section>
 
     <section class="panel" id="tripLogPanel" aria-labelledby="tripLogTitle">
@@ -1333,6 +1388,61 @@ body::before{
   </div>
 </div>
 
+<div class="modal-bg" id="washCompleteModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="washCompleteModalTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="washCompleteModalTitle">세차 완료 등록</h3>
+        <div class="sub">외부와 내부 세차 사진을 각각 1장씩 등록해 주세요.</div>
+      </div>
+      <button class="modal-close" data-close="washCompleteModal" aria-label="세차 완료 등록 창 닫기">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="wash-photo-grid">
+        <div class="wash-photo-field">
+          <strong>외부 세차 사진 <span class="required-mark">*</span></strong>
+          <label class="wash-photo-box" id="washExteriorPhotoBox" for="washExteriorPhoto">
+            <span>차량 외부를 촬영하거나<br>사진을 선택하세요.</span>
+            <img id="washExteriorPreview" alt="차량 외부 세차 사진 미리보기">
+            <input type="file" id="washExteriorPhoto" accept="image/*" capture="environment">
+          </label>
+        </div>
+        <div class="wash-photo-field">
+          <strong>내부 세차 사진 <span class="required-mark">*</span></strong>
+          <label class="wash-photo-box" id="washInteriorPhotoBox" for="washInteriorPhoto">
+            <span>차량 내부를 촬영하거나<br>사진을 선택하세요.</span>
+            <img id="washInteriorPreview" alt="차량 내부 세차 사진 미리보기">
+            <input type="file" id="washInteriorPhoto" accept="image/*" capture="environment">
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" data-close="washCompleteModal">취소</button>
+      <button class="btn primary" type="button" id="saveWashCompleteBtn">외부·내부 세차 완료 저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="washSettingsModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="washSettingsModalTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="washSettingsModalTitle">세차 대상 제외 설정</h3>
+        <div class="sub">최근 90일 미운행자는 자동 제외되며, 관리자가 추가 제외할 수 있습니다.</div>
+      </div>
+      <button class="modal-close" data-close="washSettingsModal" aria-label="세차 대상 제외 설정 창 닫기">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="wash-exclusion-list" id="washExclusionList"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" data-close="washSettingsModal">취소</button>
+      <button class="btn primary" type="button" id="saveWashSettingsBtn">제외 설정 저장</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="photoModal" aria-hidden="true">
   <div class="modal photo-view" role="dialog" aria-modal="true" aria-labelledby="photoModalTitle">
     <div class="modal-head">
@@ -1394,6 +1504,7 @@ body::before{
 <nav class="mobile-quick-nav" id="mobileQuickNav" aria-label="모바일 빠른 메뉴">
   <button type="button" data-scroll-target="carPanel"><span aria-hidden="true">●</span>차량</button>
   <button type="button" data-scroll-target="reservationPanel"><span aria-hidden="true">◷</span>예약</button>
+  <button type="button" data-scroll-target="washPanel"><span aria-hidden="true">✓</span>세차</button>
   <button type="button" data-scroll-target="parkingPanel"><span aria-hidden="true">▦</span>주차장</button>
   <button type="button" data-scroll-target="tripLogPanel"><span aria-hidden="true">≡</span>기록</button>
 </nav>
@@ -1440,6 +1551,23 @@ const EMPLOYEE_ACCOUNTS = Object.freeze({
   '106433':'오장훈','106389':'이자현','106363':'성건재','106481':'윤봉채',
   '106458':'최성우','106417':'이찬석','106430':'류보경','106434':'김현종'
 });
+// 사용자 제공 2026년 1~7월 차량 사용 기록입니다.
+// 세차 담당 추천에만 사용하며 운행일지·인쇄 양식에는 추가하지 않습니다.
+const WASH_USAGE_SEED = Object.freeze([
+  ['2026-07-29','박준혁'],['2026-07-28','박준혁'],['2026-07-27','박준혁'],
+  ['2026-07-23','오태섭'],['2026-07-09','김현종'],['2026-07-03','박세준'],
+  ['2026-06-15','오장훈'],['2026-06-12','홍혜림'],['2026-06-08','서보혁'],
+  ['2026-05-08','류보경'],['2026-05-06','류보경'],['2026-04-29','박세준'],
+  ['2026-04-17','오태섭'],['2026-04-16','황상훈'],['2026-04-14','황상훈'],
+  ['2026-04-10','김예권'],['2026-04-07','박은배'],['2026-04-01','서보혁'],
+  ['2026-04-01','황상훈'],['2026-03-27','김예권'],['2026-03-26','서보혁'],
+  ['2026-03-23','김도형'],['2026-03-18','김도형'],['2026-03-16','변정석'],
+  ['2026-03-10','박은배'],['2026-03-09','김예권'],['2026-03-06','김예권'],
+  ['2026-03-05','서보혁'],['2026-03-04','서보혁'],['2026-02-12','서보혁'],
+  ['2026-02-03','박준혁'],['2026-01-26','오장훈'],['2026-01-20','서보혁'],
+  ['2026-01-19','황상훈'],['2026-01-16','서보혁'],['2026-01-13','홍혜림'],
+  ['2026-01-07','박정민'],['2026-01-06','박정민']
+]);
 const AUTH_EMAIL_DOMAIN='ctr-elec-rnd.local';
 const DEFAULT_VISIBLE_PASSWORD='1234';
 // Firebase Authentication은 6자 미만 비밀번호를 허용하지 않으므로 초기 1234 입력만 내부 인증값으로 변환합니다.
@@ -1545,7 +1673,9 @@ const initialState = {
   },
   history:[],
   reservations:[],
-  tripLogs:initialTripLogs
+  tripLogs:initialTripLogs,
+  washSettings:{excludedEmployeeNos:[]},
+  washAssignments:[]
 };
 
 let state = loadState();
@@ -1555,6 +1685,11 @@ let returnMode = false;
 let selectedReturnSlot = '';
 let returnPhotoFile = null;
 let returnPreviewUrl = '';
+let washExteriorPhotoFile = null;
+let washInteriorPhotoFile = null;
+let washExteriorPreviewUrl = '';
+let washInteriorPreviewUrl = '';
+let pendingReturnAfterWash = false;
 let lastFocusedElement = null;
 let dbPromise = null;
 let tripLogPhotoUrls = [];
@@ -1731,7 +1866,13 @@ function normalizeLoadedState(saved){
     },
     history:Array.isArray(saved?.history)?saved.history:[],
     reservations:Array.isArray(saved?.reservations)?saved.reservations:[],
-    tripLogs:Array.isArray(saved?.tripLogs)?saved.tripLogs:clone(initialTripLogs)
+    tripLogs:Array.isArray(saved?.tripLogs)?saved.tripLogs:clone(initialTripLogs),
+    washSettings:{
+      excludedEmployeeNos:Array.isArray(saved?.washSettings?.excludedEmployeeNos)
+        ? [...new Set(saved.washSettings.excludedEmployeeNos.map(String))]
+        : []
+    },
+    washAssignments:Array.isArray(saved?.washAssignments)?saved.washAssignments:[]
   };
 }
 
@@ -2101,6 +2242,210 @@ function renderReservations(){
   }).join('');
 }
 
+function getWashPeriod(date=new Date()){
+  const year=date.getFullYear();
+  const quarter=Math.floor(date.getMonth()/3)+1;
+  const start=new Date(year,(quarter-1)*3,1);
+  const end=new Date(year,quarter*3,0,23,59,59,999);
+  return {year,quarter,id:`${year}-Q${quarter}`,start,end};
+}
+
+function formatWashDate(value){
+  const date=new Date(value);
+  if(!Number.isFinite(date.getTime())) return '-';
+  return `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function getWashUsageStats(referenceDate=new Date()){
+  const end=referenceDate.getTime();
+  const start=end-90*24*60*60*1000;
+  const employees=Object.entries(EMPLOYEE_ACCOUNTS).map(([employeeNo,name])=>({
+    employeeNo,name,tripCount:0,tripKm:0
+  }));
+  const byName=new Map(employees.map(item=>[normalizeName(item.name),item]));
+  const registerUsage=(rawDate,name,tripKm=0)=>{
+    const time=new Date(`${rawDate}T12:00:00`).getTime();
+    if(!Number.isFinite(time) || time<start || time>end) return;
+    const employee=byName.get(normalizeName(name||''));
+    if(!employee) return;
+    employee.tripCount+=1;
+    employee.tripKm+=Number(tripKm)||0;
+  };
+  state.tripLogs.forEach(log=>{
+    const rawDate=log.endDate||log.useDate||String(log.createdAt||'').slice(0,10);
+    registerUsage(rawDate,log.name,log.tripKm);
+  });
+  WASH_USAGE_SEED.forEach(([date,name])=>registerUsage(date,name,0));
+  return employees;
+}
+
+function getWashRecommendation(referenceDate=new Date()){
+  const excluded=new Set(state.washSettings.excludedEmployeeNos||[]);
+  const now=referenceDate.getTime();
+  const candidates=getWashUsageStats(referenceDate)
+    .filter(item=>item.tripCount>0 && !excluded.has(item.employeeNo))
+    .map(item=>{
+      const completed=state.washAssignments.filter(record=>
+        record.status==='completed' && String(record.assigneeEmployeeNo)===item.employeeNo
+      );
+      const lastCompletedAt=completed.reduce((latest,record)=>Math.max(latest,new Date(record.completedAt||0).getTime()||0),0);
+      return {...item,washCount:completed.length,lastCompletedAt};
+    });
+  if(!candidates.length) return null;
+  const cooldownPool=candidates.filter(item=>!item.lastCompletedAt || now-item.lastCompletedAt>=60*24*60*60*1000);
+  const pool=cooldownPool.length?cooldownPool:candidates;
+  pool.sort((a,b)=>
+    a.washCount-b.washCount
+    || a.lastCompletedAt-b.lastCompletedAt
+    || b.tripCount-a.tripCount
+    || b.tripKm-a.tripKm
+    || a.name.localeCompare(b.name,'ko')
+  );
+  return pool[0];
+}
+
+function getCurrentWashAssignment(){
+  const period=getWashPeriod();
+  return state.washAssignments.find(record=>Number(record.year)===period.year && Number(record.quarter)===period.quarter)||null;
+}
+
+function getPendingWashAssignmentForCurrentUser(){
+  const assignment=getCurrentWashAssignment();
+  if(!assignment || assignment.status==='completed' || !canModify()) return null;
+  return String(currentSession?.employeeNo||'')===String(assignment.assigneeEmployeeNo||'')?assignment:null;
+}
+
+function renderWash(){
+  const card=document.getElementById('washCard');
+  if(!card) return;
+  const period=getWashPeriod();
+  const assignment=getCurrentWashAssignment();
+  const recommendation=assignment?null:getWashRecommendation();
+  const completed=assignment?.status==='completed';
+  document.getElementById('washQuarterBadge').textContent=`${period.year}년 ${period.quarter}분기`;
+
+  let title='담당자 미지정';
+  let meta='최근 90일 운행자가 없거나 모두 제외되어 추천할 수 없습니다.';
+  if(assignment){
+    title=assignment.assigneeName||'담당자 미지정';
+    meta=completed
+      ? `${formatWashDate(assignment.completedAt)} 외부·내부 세차 완료 · 분기 1회 완료`
+      : `${formatWashDate(period.end)}까지 외부·내부 세차 후 담당자 본인이 사진과 완료 체크`;
+  }else if(recommendation){
+    title=`${recommendation.name} 추천`;
+    meta=`최근 90일 ${recommendation.tripCount}회 운행 · 세차 완료 ${recommendation.washCount}회 · 관리자 지정 대기`;
+  }
+
+  const isAssignee=!!assignment && canModify()
+    && String(currentSession?.employeeNo||'')===String(assignment.assigneeEmployeeNo||'');
+  const quarterRows=[1,2,3,4].map(quarter=>{
+    const record=state.washAssignments.find(item=>Number(item.year)===period.year && Number(item.quarter)===quarter);
+    const cls=[quarter===period.quarter?'current':'',record?.status==='completed'?'done':''].filter(Boolean).join(' ');
+    const text=record
+      ? `${record.assigneeName||'-'} · ${record.status==='completed'?'완료':'담당'}`
+      : (quarter<period.quarter?'미지정':quarter===period.quarter?'진행 중':'예정');
+    return `<div class="wash-quarter-item ${cls}"><strong>${quarter}분기</strong><span title="${escapeHtml(text)}">${escapeHtml(text)}</span></div>`;
+  }).join('');
+
+  card.innerHTML=`
+    <div class="wash-current ${completed?'completed':''}">
+      <div class="wash-label">${completed?'COMPLETED':assignment?'ASSIGNED':'RECOMMENDED'}</div>
+      <div class="wash-assignee">${escapeHtml(title)}</div>
+      <div class="wash-meta">${escapeHtml(meta)}</div>
+      <div class="wash-actions">
+        ${isAdmin()?'<button class="btn" type="button" data-wash-settings>제외 인원 설정</button>':''}
+        ${isAdmin() && !assignment && recommendation?'<button class="btn primary" type="button" data-assign-wash>추천 담당자 지정</button>':''}
+        ${isAssignee && !completed?'<button class="btn primary wash-complete-check" type="button" data-complete-wash>세차 완료 체크</button>':''}
+      </div>
+      ${assignment && !completed && !isAssignee
+        ? `<div class="login-required-hint">${escapeHtml(assignment.assigneeName||'담당자')}님이 로그인하면 완료 체크할 수 있습니다.</div>`
+        : ''}
+    </div>
+    <div class="wash-year-list" aria-label="${period.year}년 분기별 세차 현황">${quarterRows}</div>
+  `;
+}
+
+function openWashSettingsModal(){
+  if(!isAdmin()){ toast('관리자만 세차 제외 인원을 설정할 수 있습니다.'); return; }
+  const stats=getWashUsageStats();
+  const excluded=new Set(state.washSettings.excludedEmployeeNos||[]);
+  const list=document.getElementById('washExclusionList');
+  list.innerHTML=stats
+    .sort((a,b)=>b.tripCount-a.tripCount||a.name.localeCompare(b.name,'ko'))
+    .map(item=>{
+      const autoExcluded=item.tripCount===0;
+      return `<label class="wash-person-option ${autoExcluded?'auto-excluded':''}">
+        <input type="checkbox" data-wash-exclude="${escapeHtml(item.employeeNo)}" ${excluded.has(item.employeeNo)?'checked':''} ${autoExcluded?'disabled':''}>
+        <span class="wash-person-copy"><strong>${escapeHtml(item.name)} · ${escapeHtml(item.employeeNo)}</strong><span>${autoExcluded?'최근 90일 미운행 · 자동 제외':`최근 90일 ${item.tripCount}회 · ${item.tripKm.toLocaleString('ko-KR')}km`}</span></span>
+      </label>`;
+    }).join('');
+  showModal('washSettingsModal');
+}
+
+function resetWashCompletionPhotos(){
+  if(washExteriorPreviewUrl) URL.revokeObjectURL(washExteriorPreviewUrl);
+  if(washInteriorPreviewUrl) URL.revokeObjectURL(washInteriorPreviewUrl);
+  washExteriorPreviewUrl='';
+  washInteriorPreviewUrl='';
+  washExteriorPhotoFile=null;
+  washInteriorPhotoFile=null;
+  ['washExteriorPhoto','washInteriorPhoto'].forEach(id=>{
+    const input=document.getElementById(id);
+    if(input) input.value='';
+  });
+  [['washExteriorPhotoBox','washExteriorPreview'],['washInteriorPhotoBox','washInteriorPreview']].forEach(([boxId,imgId])=>{
+    document.getElementById(boxId)?.classList.remove('has-photo');
+    const img=document.getElementById(imgId);
+    if(img) img.removeAttribute('src');
+  });
+}
+
+function openWashCompleteModal(continueReturn=false){
+  const assignment=getPendingWashAssignmentForCurrentUser();
+  if(!assignment){ toast('현재 로그인 사용자는 이번 분기 세차 담당자가 아닙니다.'); return false; }
+  resetWashCompletionPhotos();
+  pendingReturnAfterWash=continueReturn;
+  showModal('washCompleteModal');
+  return true;
+}
+
+async function handleWashPhotoSelection(event,type){
+  const file=event.target.files?.[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){
+    toast('이미지 파일만 등록할 수 있습니다.');
+    event.target.value='';
+    return;
+  }
+  if(file.size>MAX_PHOTO_BYTES){
+    toast('사진은 15MB 이하만 등록할 수 있습니다.');
+    event.target.value='';
+    return;
+  }
+  try{
+    const optimized=await optimizePhoto(file);
+    const isExterior=type==='exterior';
+    const previousUrl=isExterior?washExteriorPreviewUrl:washInteriorPreviewUrl;
+    if(previousUrl) URL.revokeObjectURL(previousUrl);
+    const url=URL.createObjectURL(optimized);
+    if(isExterior){
+      washExteriorPhotoFile=optimized;
+      washExteriorPreviewUrl=url;
+      document.getElementById('washExteriorPreview').src=url;
+      document.getElementById('washExteriorPhotoBox').classList.add('has-photo');
+    }else{
+      washInteriorPhotoFile=optimized;
+      washInteriorPreviewUrl=url;
+      document.getElementById('washInteriorPreview').src=url;
+      document.getElementById('washInteriorPhotoBox').classList.add('has-photo');
+    }
+  }catch(error){
+    console.error('세차 사진 처리 실패:',error);
+    toast('사진을 처리하지 못했습니다. 다른 사진을 선택해 주세요.');
+    event.target.value='';
+  }
+}
+
 function getAllParkingSlotIds(){
   const slots=[];
   groups.forEach(g=>{
@@ -2183,7 +2528,7 @@ function renderCar(){
   `;
 }
 
-document.getElementById('carCard').addEventListener('click',e=>{
+document.getElementById('carCard').addEventListener('click',async e=>{
   if(e.target.closest('#useCarAction')){
     if(!requireLogin()) return;
     startUseLocationMode();
@@ -2194,6 +2539,15 @@ document.getElementById('carCard').addEventListener('click',e=>{
     if(!canReturnCurrentCar()){
       toast(getReturnBlockedMessage());
       return;
+    }
+    const pendingWash=getPendingWashAssignmentForCurrentUser();
+    if(pendingWash){
+      const completed=confirm('이번 분기 세차 담당자입니다. 외부·내부 세차를 완료했습니까?\n\n[확인] 사진 등록 후 완료 처리\n[취소] 세차 미완료 상태로 반납 계속');
+      if(completed){
+        openWashCompleteModal(true);
+        return;
+      }
+      alert('세차 미완료 상태로 반납을 계속합니다. 이후 세차 메뉴에서 외부·내부 사진을 등록하고 완료 체크해 주세요.');
     }
     startReturnMode();
     return;
@@ -2381,6 +2735,7 @@ function renderAll(){
   renderReservations();
   renderHistory();
   renderTripLogs();
+  renderWash();
   renderAuthControls();
   const mapSelectionMode=useLocationMode||returnMode;
   const modeBanner=document.getElementById('modeBanner');
@@ -2442,6 +2797,10 @@ document.getElementById('startUseBtn').addEventListener('click',async()=>{
   if(!firebaseReady){
     toast('DB 연결 후 차량 사용을 시작해 주세요.');
     return;
+  }
+  const pendingWash=getPendingWashAssignmentForCurrentUser();
+  if(pendingWash){
+    alert(`${pendingWash.assigneeName}님은 이번 분기 세차 담당자입니다.\n차량 반납 전 외부·내부 세차와 사진 촬영을 진행해 주세요.`);
   }
 
   const button=document.getElementById('startUseBtn');
@@ -2795,6 +3154,120 @@ document.getElementById('reservationList').addEventListener('click',e=>{
   toast('예약이 취소되었습니다.');
 });
 
+document.getElementById('washCard').addEventListener('click',async e=>{
+  if(e.target.closest('[data-wash-settings]')){
+    openWashSettingsModal();
+    return;
+  }
+
+  const assignButton=e.target.closest('[data-assign-wash]');
+  if(assignButton){
+    if(!isAdmin()){ toast('관리자만 세차 담당자를 지정할 수 있습니다.'); return; }
+    if(!firebaseReady){ toast('DB 연결 후 세차 담당자를 지정해 주세요.'); return; }
+    if(getCurrentWashAssignment()){ toast('이번 분기 세차 담당자가 이미 지정되었습니다.'); renderWash(); return; }
+    const recommendation=getWashRecommendation();
+    if(!recommendation){ toast('지정 가능한 최근 운행자가 없습니다.'); return; }
+    const period=getWashPeriod();
+    if(!confirm(`${period.year}년 ${period.quarter}분기 세차 담당자로 ${recommendation.name}님을 지정하시겠습니까?`)) return;
+    assignButton.disabled=true;
+    const backup=clone(state.washAssignments);
+    state.washAssignments.push({
+      id:period.id,year:period.year,quarter:period.quarter,
+      assigneeEmployeeNo:recommendation.employeeNo,assigneeName:recommendation.name,
+      status:'assigned',assignedAt:new Date().toISOString(),completedAt:''
+    });
+    const synced=await saveState();
+    if(!synced){
+      state.washAssignments=backup;
+      saveLocalState();
+      renderWash();
+      toast('DB 저장에 실패하여 담당자 지정을 취소했습니다.');
+      return;
+    }
+    renderWash();
+    toast(`${recommendation.name}님을 이번 분기 세차 담당자로 지정했습니다.`);
+    return;
+  }
+
+  const completeButton=e.target.closest('[data-complete-wash]');
+  if(completeButton){
+    if(!canModify()){ toast('로그인 후 세차 완료를 체크할 수 있습니다.'); return; }
+    if(!firebaseReady){ toast('DB 연결 후 세차 완료를 체크해 주세요.'); return; }
+    openWashCompleteModal(false);
+  }
+});
+
+document.getElementById('washExteriorPhoto').addEventListener('change',e=>handleWashPhotoSelection(e,'exterior'));
+document.getElementById('washInteriorPhoto').addEventListener('change',e=>handleWashPhotoSelection(e,'interior'));
+
+document.getElementById('saveWashCompleteBtn').addEventListener('click',async()=>{
+  const assignment=getPendingWashAssignmentForCurrentUser();
+  if(!assignment){ hideModal('washCompleteModal'); toast('완료 처리할 세차 담당 기록이 없습니다.'); return; }
+  if(!firebaseReady){ toast('DB 연결 후 세차 완료를 저장해 주세요.'); return; }
+  if(!washExteriorPhotoFile){ toast('외부 세차 사진 1장을 등록해 주세요.'); return; }
+  if(!washInteriorPhotoFile){ toast('내부 세차 사진 1장을 등록해 주세요.'); return; }
+
+  const button=document.getElementById('saveWashCompleteBtn');
+  const exteriorPhotoKey=`wash-${assignment.id}-${assignment.assigneeEmployeeNo}-exterior`;
+  const interiorPhotoKey=`wash-${assignment.id}-${assignment.assigneeEmployeeNo}-interior`;
+  const backup=clone(state.washAssignments);
+  const continueReturn=pendingReturnAfterWash;
+  button.disabled=true;
+  try{
+    const [exteriorResult,interiorResult]=await Promise.all([
+      savePhoto(exteriorPhotoKey,washExteriorPhotoFile),
+      savePhoto(interiorPhotoKey,washInteriorPhotoFile)
+    ]);
+    if(!exteriorResult?.remote || !interiorResult?.remote){
+      throw new Error('세차 사진의 Firebase 저장이 완료되지 않았습니다.');
+    }
+    assignment.status='completed';
+    assignment.completedAt=new Date().toISOString();
+    assignment.completedBy=currentSession.employeeNo;
+    assignment.exteriorPhotoKey=exteriorPhotoKey;
+    assignment.interiorPhotoKey=interiorPhotoKey;
+    const synced=await saveState();
+    if(!synced) throw new Error('세차 완료 기록의 DB 저장에 실패했습니다.');
+
+    hideModal('washCompleteModal');
+    button.disabled=false;
+    renderWash();
+    toast('외부·내부 세차 사진과 완료 상태를 저장했습니다.');
+    if(continueReturn) setTimeout(()=>startReturnMode(),120);
+  }catch(error){
+    console.error('세차 완료 저장 실패:',error);
+    state.washAssignments=backup;
+    saveLocalState();
+    await Promise.allSettled([deletePhotoData(exteriorPhotoKey),deletePhotoData(interiorPhotoKey)]);
+    button.disabled=false;
+    renderWash();
+    toast('세차 사진 또는 완료 기록을 저장하지 못했습니다. 다시 시도해 주세요.');
+  }
+});
+
+document.getElementById('saveWashSettingsBtn').addEventListener('click',async()=>{
+  if(!isAdmin()){ toast('관리자만 세차 제외 인원을 설정할 수 있습니다.'); return; }
+  if(!firebaseReady){ toast('DB 연결 후 제외 설정을 저장해 주세요.'); return; }
+  const button=document.getElementById('saveWashSettingsBtn');
+  const excluded=[...document.querySelectorAll('[data-wash-exclude]:checked')].map(input=>input.dataset.washExclude);
+  const backup=clone(state.washSettings);
+  button.disabled=true;
+  state.washSettings={excludedEmployeeNos:[...new Set(excluded)]};
+  const synced=await saveState();
+  if(!synced){
+    state.washSettings=backup;
+    saveLocalState();
+    button.disabled=false;
+    renderWash();
+    toast('DB 저장에 실패하여 제외 설정을 취소했습니다.');
+    return;
+  }
+  hideModal('washSettingsModal');
+  button.disabled=false;
+  renderWash();
+  toast('세차 대상 제외 설정을 저장했습니다.');
+});
+
 document.getElementById('loginBtn').addEventListener('click',openLoginModal);
 document.getElementById('changePasswordBtn').addEventListener('click',()=>openPasswordModal(false));
 document.getElementById('logoutBtn').addEventListener('click',async()=>{
@@ -2958,6 +3431,10 @@ function hideModal(id){
   modal.classList.remove('show');
   modal.setAttribute('aria-hidden','true');
   if(id==='useModal' && state.car.status==='available') selectedUseSlot='';
+  if(id==='washCompleteModal'){
+    resetWashCompletionPhotos();
+    pendingReturnAfterWash=false;
+  }
   if(lastFocusedElement?.isConnected && !isMobileView()){
     try{ lastFocusedElement.focus({preventScroll:true}); }catch(_){ lastFocusedElement.focus(); }
   }
