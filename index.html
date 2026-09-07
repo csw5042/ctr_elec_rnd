@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="회사 차량의 예약, 사용 상태, 반납 위치와 사진을 관리하는 웹 앱">
 <meta name="theme-color" content="#d92d20">
-<title>회사 차량 관리</title>
+<title>회사 차량 주차 관리</title>
 <style>
 :root{
   --bg:#f4f7fb;
@@ -1100,21 +1100,22 @@ body::before{
 .maintenance-status.inspect{background:#eef1f5;color:#58616d}
 .maintenance-details{margin-top:9px;color:#69717b;font-size:10.5px;line-height:1.55}
 .maintenance-details strong{color:#454b53}
+.maintenance-editor{margin-top:6px;color:#9a7b76;font-size:9px;font-weight:750;text-align:right}
 .maintenance-action{display:flex;justify-content:flex-end;margin-top:10px}
 .maintenance-action .btn{min-height:34px;padding:6px 10px;font-size:10px}
 .maintenance-modal-summary{margin-bottom:13px;padding:11px 12px;border-radius:11px;background:#f7f8fa;color:#5d646d;font-size:11px;line-height:1.55}
 @media(min-width:721px) and (max-width:1320px){
-  #maintenancePanel{grid-column:1/-1}
-  .maintenance-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #tripLogPanel{grid-column:1/-1}
+  .maintenance-list{grid-template-columns:1fr}
 }
 @media(max-width:720px){
   .map-scroll{padding:10px!important}
   .legend{padding-top:10px}
   #washPanel{order:3}
-  #maintenancePanel{order:4}
+  #tripLogPanel{order:4}
   #parkingPanel{order:5}
   #returnPanel{order:6}
-  #tripLogPanel{order:7}
+  #maintenancePanel{order:7}
   .mobile-quick-nav{grid-template-columns:repeat(6,1fr)}
   .wash-card{padding:14px 16px 16px}
   .maintenance-card{padding:14px 16px 16px}
@@ -1130,7 +1131,7 @@ body::before{
     <div class="logo" aria-hidden="true"><span>CAR</span></div>
     <div class="brand-copy">
       <div class="workspace-kicker"><span class="kicker-dot"></span>FLEET WORKSPACE</div>
-      <h1>회사 차량 관리</h1>
+      <h1>회사 차량 주차 관리</h1>
       <p>차량 예약 · 사용 상태 · 반납 위치 · 사진 · 운행일지를 한 화면에서 관리합니다.</p>
     </div>
   </div>
@@ -1277,6 +1278,17 @@ body::before{
       <div class="wash-card" id="washCard"></div>
     </section>
 
+    <section class="panel" id="tripLogPanel" aria-labelledby="tripLogTitle">
+      <div class="panel-head">
+        <div>
+          <h2 id="tripLogTitle">최근 운행일지</h2>
+          <div class="sub">기존 양식의 기록과 새 반납 기록을 함께 관리합니다.</div>
+        </div>
+        <span class="reservation-badge" id="latestOdoBadge">누적 -</span>
+      </div>
+      <div class="log-summary" id="tripLogList"></div>
+    </section>
+
     <section class="panel" id="maintenancePanel" aria-labelledby="maintenanceTitle">
       <div class="panel-head">
         <div>
@@ -1289,17 +1301,6 @@ body::before{
         <div class="maintenance-baseline" id="maintenanceBaseline"></div>
         <div class="maintenance-list" id="maintenanceList"></div>
       </div>
-    </section>
-
-    <section class="panel" id="tripLogPanel" aria-labelledby="tripLogTitle">
-      <div class="panel-head">
-        <div>
-          <h2 id="tripLogTitle">최근 운행일지</h2>
-          <div class="sub">기존 양식의 기록과 새 반납 기록을 함께 관리합니다.</div>
-        </div>
-        <span class="reservation-badge" id="latestOdoBadge">누적 -</span>
-      </div>
-      <div class="log-summary" id="tripLogList"></div>
     </section>
 
   </aside>
@@ -1599,9 +1600,9 @@ body::before{
   <button type="button" data-scroll-target="carPanel"><span aria-hidden="true">●</span>차량</button>
   <button type="button" data-scroll-target="reservationPanel"><span aria-hidden="true">◷</span>예약</button>
   <button type="button" data-scroll-target="washPanel"><span aria-hidden="true">✓</span>세차</button>
-  <button type="button" data-scroll-target="maintenancePanel"><span aria-hidden="true">◇</span>소모품</button>
-  <button type="button" data-scroll-target="parkingPanel"><span aria-hidden="true">▦</span>주차장</button>
   <button type="button" data-scroll-target="tripLogPanel"><span aria-hidden="true">≡</span>기록</button>
+  <button type="button" data-scroll-target="parkingPanel"><span aria-hidden="true">▦</span>주차장</button>
+  <button type="button" data-scroll-target="maintenancePanel"><span aria-hidden="true">◇</span>소모품</button>
 </nav>
 
 <div class="map-return-dock" id="mapReturnDock" aria-live="polite">
@@ -2869,6 +2870,11 @@ function renderMaintenance(){
     const recordText=info.record
       ? `최근 교체 ${formatMaintenanceDate(info.record.date)} · ${Number(info.record.km).toLocaleString('ko-KR')}km${info.record.note?` · ${info.record.note}`:''}`
       : `최초 기준 ${formatMaintenanceDate(info.baselineDate)} · ${info.baselineKm.toLocaleString('ko-KR')}km`;
+    const editorRole=String(info.record?.updatedByRole||((info.record?.updatedBy==='admin')?'admin':''));
+    const editorName=String(info.record?.updatedByName||EMPLOYEE_ACCOUNTS[String(info.record?.updatedBy||'')]||'');
+    const editorText=info.record && editorRole!=='admin' && editorName
+      ? `<div class="maintenance-editor">마지막 수정 · ${escapeHtml(editorName)}</div>`
+      : '';
     let remainingText='';
     if(!item.inspection){
       const parts=[];
@@ -2885,13 +2891,14 @@ function renderMaintenance(){
         ${escapeHtml(recordText)}<br>
         다음 기준 · ${escapeHtml(nextText)}${remainingText}
       </div>
-      ${isAdmin()?`<div class="maintenance-action"><button class="btn" type="button" data-maintenance-record="${escapeHtml(item.id)}">교체 기록</button></div>`:''}
+      ${editorText}
+      ${canModify()?`<div class="maintenance-action"><button class="btn" type="button" data-maintenance-record="${escapeHtml(item.id)}">교체 기록</button></div>`:''}
     </div>`;
   }).join('');
 }
 
 function openMaintenanceModal(itemId){
-  if(!isAdmin()){ toast('관리자만 소모품 교체 기록을 저장할 수 있습니다.'); return; }
+  if(!canModify()){ toast('로그인 후 소모품 교체 기록을 저장할 수 있습니다.'); return; }
   const item=CONSUMABLE_ITEMS.find(entry=>entry.id===itemId);
   if(!item) return;
   const info=getMaintenanceItemState(item);
@@ -3619,7 +3626,7 @@ document.getElementById('maintenanceList').addEventListener('click',event=>{
 });
 
 document.getElementById('saveMaintenanceBtn').addEventListener('click',async()=>{
-  if(!isAdmin()){ toast('관리자만 소모품 교체 기록을 저장할 수 있습니다.'); return; }
+  if(!canModify()){ toast('로그인 후 소모품 교체 기록을 저장할 수 있습니다.'); return; }
   if(!firebaseReady){ toast('DB 연결 후 교체 기록을 저장해 주세요.'); return; }
   const item=CONSUMABLE_ITEMS.find(entry=>entry.id===selectedMaintenanceItemId);
   if(!item){ toast('교체 항목을 다시 선택해 주세요.'); return; }
@@ -3638,7 +3645,9 @@ document.getElementById('saveMaintenanceBtn').addEventListener('click',async()=>
   state.maintenance.replacements[item.id]={
     date,km,note,
     updatedAt:new Date().toISOString(),
-    updatedBy:String(currentSession?.employeeNo||'admin')
+    updatedBy:String(currentSession?.employeeNo||'admin'),
+    updatedByName:String(currentSession?.name||''),
+    updatedByRole:String(currentSession?.role||'user')
   };
   const synced=await saveState();
   if(!synced){
