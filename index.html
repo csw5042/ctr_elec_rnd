@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="회사 차량의 예약, 사용 상태, 반납 위치와 사진을 관리하는 웹 앱">
 <meta name="theme-color" content="#d92d20">
-<title>회사 차량 관리</title>
+<title>회사 차량 주차 관리</title>
 <style>
 :root{
   --bg:#f4f7fb;
@@ -947,11 +947,12 @@ body::before{
     min-height:30px!important;height:30px!important;
     padding:0 8px!important;border-radius:9px!important;font-size:10px!important;
   }
-  #changePasswordBtn,#logoutBtn{
+  #accountAddBtn,#changePasswordBtn,#logoutBtn{
     width:30px!important;height:30px!important;min-height:30px!important;
     padding:0!important;border-radius:9px!important;font-size:0!important;
     display:grid;place-items:center;flex:none!important;
   }
+  #accountAddBtn::before{content:"+";font-size:18px;font-weight:900;line-height:1;color:#a51f18}
   #changePasswordBtn::before{content:"PW";font-size:8.5px;font-weight:950;letter-spacing:-.02em;color:#555b63}
   #logoutBtn::before{content:"↪";font-size:16px;font-weight:900;line-height:1;color:#555b63}
 
@@ -1131,7 +1132,7 @@ body::before{
     <div class="logo" aria-hidden="true"><span>CAR</span></div>
     <div class="brand-copy">
       <div class="workspace-kicker"><span class="kicker-dot"></span>FLEET WORKSPACE</div>
-      <h1>회사 차량 관리</h1>
+      <h1>회사 차량 주차 관리</h1>
       <p>차량 예약 · 사용 상태 · 반납 위치 · 사진 · 운행일지를 한 화면에서 관리합니다.</p>
     </div>
   </div>
@@ -1140,6 +1141,7 @@ body::before{
     <div class="auth-actions" aria-label="사용자 로그인">
       <span class="auth-user-badge" id="authUserBadge" hidden></span>
       <button class="btn" type="button" id="loginBtn">로그인</button>
+      <button class="btn" type="button" id="accountAddBtn" aria-label="사용자 계정 추가" title="사용자 계정 추가" hidden>계정 추가</button>
       <button class="btn" type="button" id="changePasswordBtn" aria-label="비밀번호 변경" title="비밀번호 변경" hidden>비밀번호 변경</button>
       <button class="btn" type="button" id="logoutBtn" aria-label="로그아웃" title="로그아웃" hidden>로그아웃</button>
     </div>
@@ -1550,6 +1552,34 @@ body::before{
   </div>
 </div>
 
+<div class="modal-bg" id="accountAddModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="accountAddModalTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="accountAddModalTitle">사용자 계정 추가</h3>
+        <div class="sub">관리자만 새 사용자 계정을 등록할 수 있습니다.</div>
+      </div>
+      <button class="modal-close" data-close="accountAddModal" aria-label="사용자 계정 추가 창 닫기">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="auth-note">새 계정의 초기 비밀번호는 <b>1234</b>입니다. 사용자는 첫 로그인 후 비밀번호를 변경해야 합니다.</p>
+      <div class="field">
+        <label for="newAccountEmployeeNo">사번<span class="required-mark" aria-hidden="true">*</span></label>
+        <input id="newAccountEmployeeNo" maxlength="12" inputmode="numeric" autocomplete="off" placeholder="숫자 4~12자리">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label for="newAccountName">이름<span class="required-mark" aria-hidden="true">*</span></label>
+        <input id="newAccountName" maxlength="30" autocomplete="off" placeholder="사용자 이름">
+      </div>
+      <div class="auth-error" id="accountAddError" role="alert"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" data-close="accountAddModal">취소</button>
+      <button class="btn primary" type="button" id="saveAccountBtn">계정 추가</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="loginModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
     <div class="modal-head">
@@ -1789,6 +1819,7 @@ const initialState = {
   history:[],
   reservations:[],
   tripLogs:initialTripLogs,
+  accounts:[],
   washSettings:{excludedEmployeeNos:[]},
   washAssignments:[],
   maintenance:{
@@ -1826,16 +1857,23 @@ function employeeEmail(employeeNo){ return `${employeeNo}@${AUTH_EMAIL_DOMAIN}`;
 function firebasePasswordForLogin(rawPassword,profile=null){
   return rawPassword===DEFAULT_VISIBLE_PASSWORD && !profile?.passwordChanged ? DEFAULT_FIREBASE_PASSWORD : rawPassword;
 }
+function getKnownEmployeeAccounts(){
+  const accounts={...EMPLOYEE_ACCOUNTS};
+  (state.accounts||[]).forEach(item=>{
+    const employeeNo=String(item?.employeeNo||'');
+    const name=String(item?.name||'').trim();
+    if(/^\d{4,12}$/.test(employeeNo) && name) accounts[employeeNo]=name;
+  });
+  return accounts;
+}
 function getAccountFromLogin(employeeNo){
   const cleanNo=String(employeeNo||'').trim();
   if(cleanNo.toLowerCase()===ADMIN_LOGIN_ID){
     return {name:'admin',employeeNo:'admin',role:'admin',email:ADMIN_EMAIL};
   }
-  const name=EMPLOYEE_ACCOUNTS[cleanNo];
-  if(name){
-    return {name,employeeNo:cleanNo,role:'user',email:employeeEmail(cleanNo)};
-  }
-  return null;
+  if(!/^\d{4,12}$/.test(cleanNo)) return null;
+  const name=getKnownEmployeeAccounts()[cleanNo]||'';
+  return {name,employeeNo:cleanNo,role:'user',email:employeeEmail(cleanNo)};
 }
 function accountFromFirebaseUser(user){
   const email=String(user?.email||'').toLowerCase();
@@ -1843,8 +1881,9 @@ function accountFromFirebaseUser(user){
   const suffix=`@${AUTH_EMAIL_DOMAIN}`;
   if(!email.endsWith(suffix)) return null;
   const employeeNo=email.slice(0,-suffix.length);
-  const name=EMPLOYEE_ACCOUNTS[employeeNo];
-  return name?{name,employeeNo,role:'user',email}:null;
+  if(!/^\d{4,12}$/.test(employeeNo)) return null;
+  const name=getKnownEmployeeAccounts()[employeeNo]||'';
+  return {name,employeeNo,role:'user',email};
 }
 function canModify(){ return !!currentSession && !passwordChangeRequired; }
 function isAdmin(){ return canModify() && currentSession?.role==='admin'; }
@@ -1867,9 +1906,11 @@ function requireLogin(message='로그인 후 사용할 수 있습니다.'){
 }
 function setLoginError(text=''){ const el=document.getElementById('loginError'); if(el) el.textContent=text; }
 function setPasswordError(text=''){ const el=document.getElementById('passwordError'); if(el) el.textContent=text; }
+function setAccountAddError(text=''){ const el=document.getElementById('accountAddError'); if(el) el.textContent=text; }
 function renderAuthControls(){
   const badge=document.getElementById('authUserBadge');
   const loginBtn=document.getElementById('loginBtn');
+  const accountAddBtn=document.getElementById('accountAddBtn');
   const changeBtn=document.getElementById('changePasswordBtn');
   const logoutBtn=document.getElementById('logoutBtn');
   const reservationBtn=document.getElementById('openReservationBtn');
@@ -1881,6 +1922,7 @@ function renderAuthControls(){
     badge.title=badge.textContent;
   }
   if(loginBtn) loginBtn.hidden=loggedIn;
+  if(accountAddBtn) accountAddBtn.hidden=!isAdmin();
   if(changeBtn) changeBtn.hidden=!loggedIn;
   if(logoutBtn) logoutBtn.hidden=!loggedIn;
   if(reservationBtn){
@@ -1893,6 +1935,14 @@ function openLoginModal(){
   document.getElementById('loginPassword').value='';
   showModal('loginModal');
   setTimeout(()=>document.getElementById('loginEmployeeNo')?.focus(),60);
+}
+function openAccountAddModal(){
+  if(!isAdmin()){ toast('관리자만 사용자 계정을 추가할 수 있습니다.'); return; }
+  setAccountAddError('');
+  document.getElementById('newAccountEmployeeNo').value='';
+  document.getElementById('newAccountName').value='';
+  showModal('accountAddModal');
+  setTimeout(()=>document.getElementById('newAccountEmployeeNo')?.focus(),60);
 }
 function openPasswordModal(forced=false){
   const modal=document.getElementById('passwordModal');
@@ -1912,8 +1962,9 @@ async function ensureUserProfile(user,account){
   const snap=await ref.get();
   if(snap.exists){
     const data=snap.data()||{};
-    return {...data,...account,uid:user.uid,email:user.email};
+    return {...account,...data,uid:user.uid,email:user.email};
   }
+  if(!account.name) throw new Error('등록된 사용자 프로필이 없습니다.');
   const profile={
     name:account.name,employeeNo:account.employeeNo,role:account.role,
     passwordChanged:account.role==='admin',createdAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -1991,6 +2042,13 @@ function normalizeLoadedState(saved){
     history:Array.isArray(saved?.history)?saved.history:[],
     reservations:Array.isArray(saved?.reservations)?saved.reservations:[],
     tripLogs:savedTripLogs,
+    accounts:Array.isArray(saved?.accounts)
+      ? saved.accounts.filter(item=>/^\d{4,12}$/.test(String(item?.employeeNo||'')) && String(item?.name||'').trim())
+        .map(item=>({
+          employeeNo:String(item.employeeNo),name:String(item.name).trim(),
+          createdAt:String(item.createdAt||''),createdBy:String(item.createdBy||'admin')
+        }))
+      : [],
     washSettings:{
       excludedEmployeeNos:Array.isArray(saved?.washSettings?.excludedEmployeeNos)
         ? [...new Set(saved.washSettings.excludedEmployeeNos.map(String))]
@@ -2414,7 +2472,7 @@ function getWashUsageStats(referenceDate=new Date()){
   const windowRange=getWashCandidateWindow(referenceDate);
   const end=windowRange.end.getTime();
   const start=windowRange.start.getTime();
-  const employees=Object.entries(EMPLOYEE_ACCOUNTS).map(([employeeNo,name])=>({
+  const employees=Object.entries(getKnownEmployeeAccounts()).map(([employeeNo,name])=>({
     employeeNo,name,tripCount:0,tripKm:0
   }));
   const byName=new Map(employees.map(item=>[normalizeName(item.name),item]));
@@ -2866,7 +2924,7 @@ function renderMaintenance(){
       ? `최근 교체 ${formatMaintenanceDate(info.record.date)} · ${Number(info.record.km).toLocaleString('ko-KR')}km${info.record.note?` · ${info.record.note}`:''}`
       : `최초 기준 ${formatMaintenanceDate(info.baselineDate)} · ${info.baselineKm.toLocaleString('ko-KR')}km`;
     const editorRole=String(info.record?.updatedByRole||((info.record?.updatedBy==='admin')?'admin':''));
-    const editorName=String(info.record?.updatedByName||EMPLOYEE_ACCOUNTS[String(info.record?.updatedBy||'')]||'');
+    const editorName=String(info.record?.updatedByName||getKnownEmployeeAccounts()[String(info.record?.updatedBy||'')]||'');
     const editorText=info.record && editorRole!=='admin' && editorName
       ? `<div class="maintenance-editor">마지막 수정 · ${escapeHtml(editorName)}</div>`
       : '';
@@ -3553,7 +3611,7 @@ document.getElementById('saveWashAssigneeBtn').addEventListener('click',async()=
   if(!firebaseReady){ toast('DB 연결 후 담당자를 변경해 주세요.'); return; }
   const select=document.getElementById('washAssigneeSelect');
   const employeeNo=String(select.value||'');
-  const name=EMPLOYEE_ACCOUNTS[employeeNo];
+  const name=getKnownEmployeeAccounts()[employeeNo];
   const usage=getEligibleWashCandidates().find(item=>item.employeeNo===employeeNo);
   if(!name || !usage){
     toast('최근 2개 분기 운행자 중 제외 조건에 해당하지 않는 인원을 선택해 주세요.');
@@ -3661,12 +3719,78 @@ document.getElementById('saveMaintenanceBtn').addEventListener('click',async()=>
 });
 
 document.getElementById('loginBtn').addEventListener('click',openLoginModal);
+document.getElementById('accountAddBtn').addEventListener('click',openAccountAddModal);
 document.getElementById('changePasswordBtn').addEventListener('click',()=>openPasswordModal(false));
 document.getElementById('logoutBtn').addEventListener('click',async()=>{
   if(passwordChangeRequired){ toast('먼저 비밀번호 변경을 완료해 주세요.'); openPasswordModal(true); return; }
   try{ await auth.signOut(); toast('로그아웃했습니다.'); }
   catch(error){ console.error(error); toast('로그아웃 중 오류가 발생했습니다.'); }
 });
+
+document.getElementById('saveAccountBtn').addEventListener('click',async()=>{
+  if(!isAdmin()){ setAccountAddError('관리자만 사용자 계정을 추가할 수 있습니다.'); return; }
+  if(!firebaseReady){ setAccountAddError('DB 연결 후 계정을 추가해 주세요.'); return; }
+  const employeeNo=document.getElementById('newAccountEmployeeNo').value.trim();
+  const name=document.getElementById('newAccountName').value.trim();
+  setAccountAddError('');
+  if(!/^\d{4,12}$/.test(employeeNo)){ setAccountAddError('사번은 숫자 4~12자리로 입력해 주세요.'); return; }
+  if(name.length<2){ setAccountAddError('이름은 2자 이상 입력해 주세요.'); return; }
+  if(getKnownEmployeeAccounts()[employeeNo]){ setAccountAddError('이미 등록된 사번입니다.'); return; }
+  if(!confirm(`${name} · ${employeeNo} 계정을 추가하시겠습니까?\n초기 비밀번호는 1234입니다.`)) return;
+
+  const button=document.getElementById('saveAccountBtn');
+  const backup=clone(state.accounts||[]);
+  const appName=`accountCreator-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  let secondaryApp=null;
+  let secondaryAuth=null;
+  let createdUser=null;
+  button.disabled=true;
+  try{
+    state.accounts.push({
+      employeeNo,name,createdAt:new Date().toISOString(),
+      createdBy:String(currentSession?.employeeNo||'admin')
+    });
+    const registrySynced=await saveState({silent:true});
+    if(!registrySynced) throw new Error('계정 목록을 DB에 저장하지 못했습니다.');
+
+    secondaryApp=firebase.initializeApp(firebaseConfig,appName);
+    secondaryAuth=secondaryApp.auth();
+    const credential=await secondaryAuth.createUserWithEmailAndPassword(employeeEmail(employeeNo),DEFAULT_FIREBASE_PASSWORD);
+    createdUser=credential.user;
+    await FIREBASE_PROFILE_COLLECTION.doc(createdUser.uid).set({
+      name,employeeNo,role:'user',passwordChanged:false,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy:String(currentSession?.employeeNo||'admin')
+    });
+
+    hideModal('accountAddModal');
+    renderWash();
+    toast(`${name}님의 계정을 추가했습니다. 초기 비밀번호는 1234입니다.`);
+  }catch(error){
+    console.error('사용자 계정 추가 실패:',error);
+    if(createdUser){
+      try{ await createdUser.delete(); }catch(deleteError){ console.warn('미완성 인증 계정 정리 실패:',deleteError); }
+    }
+    state.accounts=backup;
+    saveLocalState();
+    await saveState({silent:true});
+    const code=String(error?.code||'');
+    if(code.includes('email-already-in-use')){
+      setAccountAddError('해당 사번의 Firebase 인증 계정이 이미 존재합니다.');
+    }else if(code.includes('permission-denied')){
+      setAccountAddError('Firebase 규칙에서 관리자 프로필 생성을 허용해야 합니다. firestore.rules를 적용해 주세요.');
+    }else{
+      setAccountAddError(error?.message||'계정을 추가하지 못했습니다. 다시 시도해 주세요.');
+    }
+  }finally{
+    try{ await secondaryAuth?.signOut(); }catch(_){ }
+    try{ await secondaryApp?.delete(); }catch(_){ }
+    button.disabled=false;
+  }
+});
+['newAccountEmployeeNo','newAccountName'].forEach(id=>document.getElementById(id).addEventListener('keydown',event=>{
+  if(event.key==='Enter') document.getElementById('saveAccountBtn').click();
+}));
 
 document.getElementById('loginSubmitBtn').addEventListener('click',async()=>{
   const button=document.getElementById('loginSubmitBtn');
@@ -3675,14 +3799,15 @@ document.getElementById('loginSubmitBtn').addEventListener('click',async()=>{
   setLoginError('');
   if(!employeeNo||!rawPassword){ setLoginError('사번과 비밀번호를 모두 입력해 주세요.'); return; }
   const account=getAccountFromLogin(employeeNo);
-  if(!account){ setLoginError('등록되지 않은 사번입니다.'); return; }
+  if(!account){ setLoginError('사번 형식을 확인해 주세요.'); return; }
   button.disabled=true;
   try{
     // 일반 사용자의 화면상 초기 비밀번호 1234는 Firebase 최소 길이 제한 때문에 CTR@1234로 변환하여 인증합니다.
     const password=(account.role==='user' && rawPassword===DEFAULT_VISIBLE_PASSWORD)?DEFAULT_FIREBASE_PASSWORD:rawPassword;
     const credential=await auth.signInWithEmailAndPassword(account.email,password);
     hideModal('loginModal');
-    toast(account.role==='admin'?'관리자로 로그인했습니다.':`${account.name}님 로그인했습니다.`);
+    const loginName=account.name||getKnownEmployeeAccounts()[account.employeeNo]||'사용자';
+    toast(account.role==='admin'?'관리자로 로그인했습니다.':`${loginName}님 로그인했습니다.`);
   }catch(error){
     console.error('로그인 실패:',error);
     const code=String(error?.code||'');
