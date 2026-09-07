@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="회사 차량의 예약, 사용 상태, 반납 위치와 사진을 관리하는 웹 앱">
 <meta name="theme-color" content="#d92d20">
-<title>회사 차량 관리</title>
+<title>회사 차량 주차 관리</title>
 <style>
 :root{
   --bg:#f4f7fb;
@@ -1082,15 +1082,42 @@ body::before{
 .wash-photo-box img{display:none;width:100%;height:180px;object-fit:cover}
 .wash-photo-box.has-photo img{display:block}.wash-photo-box.has-photo span{display:none}
 .wash-photo-box input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.maintenance-card{padding:18px 20px 20px}
+.maintenance-baseline{
+  padding:12px 13px;border:1px solid #e3e6ea;border-radius:12px;background:#f8f9fa;
+  color:#666d76;font-size:10.5px;line-height:1.55
+}
+.maintenance-list{display:grid;gap:9px;margin-top:12px}
+.maintenance-item{padding:13px;border:1px solid #e4e7eb;border-radius:13px;background:#fff}
+.maintenance-item.due{border-color:#efb0aa;background:#fff8f7}
+.maintenance-item.warning{border-color:#edd28b;background:#fffdf5}
+.maintenance-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.maintenance-name{font-size:13px;font-weight:950;color:#343940}
+.maintenance-cycle{margin-top:3px;color:#858b94;font-size:10px;font-weight:750}
+.maintenance-status{flex:none;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:950;background:#eaf7f0;color:#147448}
+.maintenance-status.warning{background:#fff1c7;color:#7b5b00}
+.maintenance-status.due{background:#fde1de;color:#b02c22}
+.maintenance-status.inspect{background:#eef1f5;color:#58616d}
+.maintenance-details{margin-top:9px;color:#69717b;font-size:10.5px;line-height:1.55}
+.maintenance-details strong{color:#454b53}
+.maintenance-action{display:flex;justify-content:flex-end;margin-top:10px}
+.maintenance-action .btn{min-height:34px;padding:6px 10px;font-size:10px}
+.maintenance-modal-summary{margin-bottom:13px;padding:11px 12px;border-radius:11px;background:#f7f8fa;color:#5d646d;font-size:11px;line-height:1.55}
+@media(min-width:721px) and (max-width:1320px){
+  #maintenancePanel{grid-column:1/-1}
+  .maintenance-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 @media(max-width:720px){
   .map-scroll{padding:10px!important}
   .legend{padding-top:10px}
   #washPanel{order:3}
-  #parkingPanel{order:4}
-  #returnPanel{order:5}
-  #tripLogPanel{order:6}
-  .mobile-quick-nav{grid-template-columns:repeat(5,1fr)}
+  #maintenancePanel{order:4}
+  #parkingPanel{order:5}
+  #returnPanel{order:6}
+  #tripLogPanel{order:7}
+  .mobile-quick-nav{grid-template-columns:repeat(6,1fr)}
   .wash-card{padding:14px 16px 16px}
+  .maintenance-card{padding:14px 16px 16px}
   .wash-exclusion-list{grid-template-columns:1fr;max-height:58vh}
   .wash-photo-grid{grid-template-columns:1fr}
   .wash-photo-box{min-height:150px}.wash-photo-box img{height:150px}
@@ -1103,7 +1130,7 @@ body::before{
     <div class="logo" aria-hidden="true"><span>CAR</span></div>
     <div class="brand-copy">
       <div class="workspace-kicker"><span class="kicker-dot"></span>FLEET WORKSPACE</div>
-      <h1>회사 차량 관리</h1>
+      <h1>회사 차량 주차 관리</h1>
       <p>차량 예약 · 사용 상태 · 반납 위치 · 사진 · 운행일지를 한 화면에서 관리합니다.</p>
     </div>
   </div>
@@ -1248,6 +1275,20 @@ body::before{
         <span class="reservation-badge" id="washQuarterBadge">-</span>
       </div>
       <div class="wash-card" id="washCard"></div>
+    </section>
+
+    <section class="panel" id="maintenancePanel" aria-labelledby="maintenanceTitle">
+      <div class="panel-head">
+        <div>
+          <h2 id="maintenanceTitle">차량 소모품 관리</h2>
+          <div class="sub">교체 주기 중 거리와 기간 가운데 먼저 도래하는 기준으로 안내합니다.</div>
+        </div>
+        <span class="reservation-badge" id="maintenanceOdoBadge">누적 -</span>
+      </div>
+      <div class="maintenance-card">
+        <div class="maintenance-baseline" id="maintenanceBaseline"></div>
+        <div class="maintenance-list" id="maintenanceList"></div>
+      </div>
     </section>
 
     <section class="panel" id="tripLogPanel" aria-labelledby="tripLogTitle">
@@ -1465,6 +1506,37 @@ body::before{
   </div>
 </div>
 
+<div class="modal-bg" id="maintenanceModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="maintenanceModalTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="maintenanceModalTitle">소모품 교체 기록</h3>
+        <div class="sub">실제 교체일과 당시 누적거리를 새 기준으로 저장합니다.</div>
+      </div>
+      <button class="modal-close" data-close="maintenanceModal" aria-label="소모품 교체 기록 창 닫기">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="maintenance-modal-summary" id="maintenanceModalSummary"></div>
+      <div class="field">
+        <label for="maintenanceDate">교체일<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="date" id="maintenanceDate" required>
+      </div>
+      <div class="field">
+        <label for="maintenanceKm">교체 당시 누적거리(km)<span class="required-mark" aria-hidden="true">*</span></label>
+        <input type="number" id="maintenanceKm" min="0" step="1" inputmode="numeric" required>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label for="maintenanceNote">비고</label>
+        <textarea id="maintenanceNote" maxlength="200" placeholder="교체 제품이나 정비 내용을 선택 입력"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" data-close="maintenanceModal">취소</button>
+      <button class="btn primary" type="button" id="saveMaintenanceBtn">교체 기록 저장</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="photoModal" aria-hidden="true">
   <div class="modal photo-view" role="dialog" aria-modal="true" aria-labelledby="photoModalTitle">
     <div class="modal-head">
@@ -1527,6 +1599,7 @@ body::before{
   <button type="button" data-scroll-target="carPanel"><span aria-hidden="true">●</span>차량</button>
   <button type="button" data-scroll-target="reservationPanel"><span aria-hidden="true">◷</span>예약</button>
   <button type="button" data-scroll-target="washPanel"><span aria-hidden="true">✓</span>세차</button>
+  <button type="button" data-scroll-target="maintenancePanel"><span aria-hidden="true">◇</span>소모품</button>
   <button type="button" data-scroll-target="parkingPanel"><span aria-hidden="true">▦</span>주차장</button>
   <button type="button" data-scroll-target="tripLogPanel"><span aria-hidden="true">≡</span>기록</button>
 </nav>
@@ -1620,6 +1693,26 @@ const PHOTO_START_QUALITY = 0.72;
 const PHOTO_MIN_QUALITY = 0.42;
 const PHOTO_RETENTION_COUNT = 10; // 최근 반납 사진 10개만 유지
 
+const VEHICLE_INFO = Object.freeze({
+  plate:'69누 5829',
+  modelYear:2018,
+  maintenanceBaselineDate:'2026-09-07',
+  maintenanceBaselineKm:103560
+});
+const CONSUMABLE_ITEMS = Object.freeze([
+  {id:'tires',name:'타이어',km:50000,years:5,cycle:'5년 또는 50,000km'},
+  {id:'engineOil',name:'엔진오일',km:10000,cycle:'10,000km'},
+  {id:'transmissionOil',name:'미션오일',km:40000,cycle:'40,000km'},
+  {id:'wiper',name:'와이퍼',inspection:true,cycle:'상태 점검 후 필요 시 교체'},
+  {id:'brakePads',name:'브레이크패드',km:50000,cycle:'50,000km'},
+  {id:'coolant',name:'부동액',km:40000,years:2,cycle:'2년 또는 40,000km'},
+  {id:'brakeFluid',name:'브레이크오일',km:35000,years:2,cycle:'2년 또는 35,000km'},
+  {id:'battery',name:'배터리',km:50000,years:3,cycle:'3년 또는 50,000km'},
+  {id:'fuelFilter',name:'연료필터',km:40000,years:2,cycle:'2년 또는 40,000km'},
+  {id:'sparkPlugs',name:'점화플러그',years:4,cycle:'4년'},
+  {id:'cabinFilter',name:'에어컨필터',km:12000,cycle:'12,000km'}
+]);
+
 /* 실제 배치 방향을 유지하면서, 번호 대신 등록하기 쉬운 구역 단위로 관리합니다. */
 const groups = [
   {id:'TOP',kind:'zone',slotId:'상단',label:'상단 주차 구역',x:155,y:20,w:470,h:80,cls:'edge-zone'},
@@ -1697,7 +1790,12 @@ const initialState = {
   reservations:[],
   tripLogs:initialTripLogs,
   washSettings:{excludedEmployeeNos:[]},
-  washAssignments:[]
+  washAssignments:[],
+  maintenance:{
+    baselineDate:VEHICLE_INFO.maintenanceBaselineDate,
+    baselineKm:VEHICLE_INFO.maintenanceBaselineKm,
+    replacements:{}
+  }
 };
 
 let state = loadState();
@@ -1712,6 +1810,7 @@ let washInteriorPhotoFile = null;
 let washExteriorPreviewUrl = '';
 let washInteriorPreviewUrl = '';
 let pendingReturnAfterWash = false;
+let selectedMaintenanceItemId = '';
 let lastFocusedElement = null;
 let dbPromise = null;
 let tripLogPhotoUrls = [];
@@ -1878,6 +1977,9 @@ function normalizeSlotId(value=''){
 }
 function normalizeLoadedState(saved){
   const savedCar={...(saved?.car||{})};
+  const savedTripLogs=Array.isArray(saved?.tripLogs)?saved.tripLogs:clone(initialTripLogs);
+  const latestSavedKm=savedTripLogs.reduce((latest,item)=>Math.max(latest,Number(item?.cumulativeKm)||0),0);
+  const hasSavedMaintenance=saved?.maintenance && typeof saved.maintenance==='object';
   delete savedCar.plate; // 구버전 Firebase/localStorage에 남은 차량번호 제거
   return {
     car:{
@@ -1888,13 +1990,24 @@ function normalizeLoadedState(saved){
     },
     history:Array.isArray(saved?.history)?saved.history:[],
     reservations:Array.isArray(saved?.reservations)?saved.reservations:[],
-    tripLogs:Array.isArray(saved?.tripLogs)?saved.tripLogs:clone(initialTripLogs),
+    tripLogs:savedTripLogs,
     washSettings:{
       excludedEmployeeNos:Array.isArray(saved?.washSettings?.excludedEmployeeNos)
         ? [...new Set(saved.washSettings.excludedEmployeeNos.map(String))]
         : []
     },
-    washAssignments:Array.isArray(saved?.washAssignments)?saved.washAssignments:[]
+    washAssignments:Array.isArray(saved?.washAssignments)?saved.washAssignments:[],
+    maintenance:{
+      baselineDate:/^\d{4}-\d{2}-\d{2}$/.test(String(saved?.maintenance?.baselineDate||''))
+        ? saved.maintenance.baselineDate
+        : VEHICLE_INFO.maintenanceBaselineDate,
+      baselineKm:hasSavedMaintenance && Number.isFinite(Number(saved?.maintenance?.baselineKm))
+        ? Number(saved.maintenance.baselineKm)
+        : Math.max(VEHICLE_INFO.maintenanceBaselineKm,latestSavedKm),
+      replacements:saved?.maintenance?.replacements && typeof saved.maintenance.replacements==='object' && !Array.isArray(saved.maintenance.replacements)
+        ? clone(saved.maintenance.replacements)
+        : {}
+    }
   };
 }
 
@@ -2586,6 +2699,14 @@ function renderCar(){
     </div>
     <div class="info-grid">
       <div class="info-box">
+        <div class="label">차량번호</div>
+        <div class="value">${escapeHtml(VEHICLE_INFO.plate)}</div>
+      </div>
+      <div class="info-box">
+        <div class="label">연식</div>
+        <div class="value">${VEHICLE_INFO.modelYear}년식</div>
+      </div>
+      <div class="info-box">
         <div class="label">${available?'현재 주차 위치':'사용자'}</div>
         <div class="value">${escapeHtml(available?(c.slot||'미등록'):(c.currentUser||'-'))}</div>
       </div>
@@ -2671,6 +2792,122 @@ function renderHistory(){
 
 function getLatestCumulativeKm(){
   return state.tripLogs.reduce((latest,item)=>Math.max(latest,Number(item.cumulativeKm)||0),0);
+}
+
+function getLocalDateIso(date=new Date()){
+  const pad=value=>String(value).padStart(2,'0');
+  return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+}
+
+function parseLocalDate(value){
+  const date=new Date(`${value}T00:00:00`);
+  return Number.isFinite(date.getTime())?date:null;
+}
+
+function formatMaintenanceDate(value){
+  const date=parseLocalDate(value);
+  if(!date) return value||'-';
+  return `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function addYearsToDate(value,years){
+  const date=parseLocalDate(value);
+  if(!date) return null;
+  const month=date.getMonth();
+  date.setFullYear(date.getFullYear()+years);
+  if(date.getMonth()!==month) date.setDate(0);
+  return date;
+}
+
+function getMaintenanceCurrentKm(){
+  return Math.max(
+    Number(state.maintenance?.baselineKm)||VEHICLE_INFO.maintenanceBaselineKm,
+    getLatestCumulativeKm()
+  );
+}
+
+function getMaintenanceItemState(item){
+  const record=state.maintenance?.replacements?.[item.id]||null;
+  const baselineDate=record?.date||state.maintenance?.baselineDate||VEHICLE_INFO.maintenanceBaselineDate;
+  const baselineKm=Number.isFinite(Number(record?.km))
+    ? Number(record.km)
+    : Number(state.maintenance?.baselineKm)||VEHICLE_INFO.maintenanceBaselineKm;
+  const currentKm=getMaintenanceCurrentKm();
+  const dueKm=item.km?baselineKm+item.km:null;
+  const dueDate=item.years?addYearsToDate(baselineDate,item.years):null;
+  const today=parseLocalDate(getLocalDateIso());
+  const distanceRemaining=dueKm===null?null:dueKm-currentKm;
+  const daysRemaining=dueDate===null?null:Math.ceil((dueDate.getTime()-today.getTime())/86400000);
+  const due=(distanceRemaining!==null && distanceRemaining<=0)||(daysRemaining!==null && daysRemaining<=0);
+  const warning=!due && (
+    (distanceRemaining!==null && distanceRemaining<=Math.min(5000,Math.max(2000,item.km*.15))) ||
+    (daysRemaining!==null && daysRemaining<=90)
+  );
+  return {record,baselineDate,baselineKm,currentKm,dueKm,dueDate,distanceRemaining,daysRemaining,due,warning};
+}
+
+function renderMaintenance(){
+  const list=document.getElementById('maintenanceList');
+  if(!list) return;
+  const currentKm=getMaintenanceCurrentKm();
+  const baselineDate=state.maintenance?.baselineDate||VEHICLE_INFO.maintenanceBaselineDate;
+  const baselineKm=Number(state.maintenance?.baselineKm)||VEHICLE_INFO.maintenanceBaselineKm;
+  document.getElementById('maintenanceOdoBadge').textContent=`누적 ${currentKm.toLocaleString('ko-KR')}km`;
+  document.getElementById('maintenanceBaseline').innerHTML=`
+    기존 교체 이력이 없어 <strong>${escapeHtml(formatMaintenanceDate(baselineDate))}</strong> ·
+    <strong>${baselineKm.toLocaleString('ko-KR')}km</strong>를 최초 기준으로 적용했습니다.
+    교체 후 기록을 저장하면 해당 항목의 기준이 자동 갱신됩니다.
+  `;
+  list.innerHTML=CONSUMABLE_ITEMS.map(item=>{
+    const info=getMaintenanceItemState(item);
+    const statusClass=item.inspection?'inspect':info.due?'due':info.warning?'warning':'';
+    const statusLabel=item.inspection?'상태 점검':info.due?'교체 필요':info.warning?'교체 임박':'정상';
+    const dueParts=[];
+    if(info.dueDate) dueParts.push(formatMaintenanceDate(getLocalDateIso(info.dueDate)));
+    if(info.dueKm!==null) dueParts.push(`${info.dueKm.toLocaleString('ko-KR')}km`);
+    const nextText=item.inspection?'상태 점검 후 필요 시 교체':`${dueParts.join(' 또는 ')} 중 먼저 도래`;
+    const recordText=info.record
+      ? `최근 교체 ${formatMaintenanceDate(info.record.date)} · ${Number(info.record.km).toLocaleString('ko-KR')}km${info.record.note?` · ${info.record.note}`:''}`
+      : `최초 기준 ${formatMaintenanceDate(info.baselineDate)} · ${info.baselineKm.toLocaleString('ko-KR')}km`;
+    let remainingText='';
+    if(!item.inspection){
+      const parts=[];
+      if(info.distanceRemaining!==null) parts.push(info.distanceRemaining<=0?`${Math.abs(info.distanceRemaining).toLocaleString('ko-KR')}km 초과`:`${info.distanceRemaining.toLocaleString('ko-KR')}km 남음`);
+      if(info.daysRemaining!==null) parts.push(info.daysRemaining<=0?`${Math.abs(info.daysRemaining)}일 경과`:`${info.daysRemaining}일 남음`);
+      remainingText=`<br><strong>${escapeHtml(parts.join(' · '))}</strong>`;
+    }
+    return `<div class="maintenance-item ${statusClass}">
+      <div class="maintenance-item-head">
+        <div><div class="maintenance-name">${escapeHtml(item.name)}</div><div class="maintenance-cycle">주기 · ${escapeHtml(item.cycle)}</div></div>
+        <span class="maintenance-status ${statusClass}">${statusLabel}</span>
+      </div>
+      <div class="maintenance-details">
+        ${escapeHtml(recordText)}<br>
+        다음 기준 · ${escapeHtml(nextText)}${remainingText}
+      </div>
+      ${isAdmin()?`<div class="maintenance-action"><button class="btn" type="button" data-maintenance-record="${escapeHtml(item.id)}">교체 기록</button></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function openMaintenanceModal(itemId){
+  if(!isAdmin()){ toast('관리자만 소모품 교체 기록을 저장할 수 있습니다.'); return; }
+  const item=CONSUMABLE_ITEMS.find(entry=>entry.id===itemId);
+  if(!item) return;
+  const info=getMaintenanceItemState(item);
+  selectedMaintenanceItemId=item.id;
+  document.getElementById('maintenanceModalTitle').textContent=`${item.name} 교체 기록`;
+  document.getElementById('maintenanceModalSummary').textContent=info.record
+    ? `현재 기록: ${formatMaintenanceDate(info.record.date)} · ${Number(info.record.km).toLocaleString('ko-KR')}km`
+    : `현재는 최초 기준 ${formatMaintenanceDate(info.baselineDate)} · ${info.baselineKm.toLocaleString('ko-KR')}km가 적용 중입니다.`;
+  const today=getLocalDateIso();
+  const dateInput=document.getElementById('maintenanceDate');
+  dateInput.max=today;
+  dateInput.value=today;
+  document.getElementById('maintenanceKm').value=String(info.currentKm);
+  document.getElementById('maintenanceNote').value='';
+  showModal('maintenanceModal');
+  setTimeout(()=>dateInput.focus(),60);
 }
 
 function getTripLogReturnDetails(logs){
@@ -2821,6 +3058,7 @@ function renderAll(){
   renderReservations();
   renderHistory();
   renderTripLogs();
+  renderMaintenance();
   renderWash();
   renderAuthControls();
   const mapSelectionMode=useLocationMode||returnMode;
@@ -3375,6 +3613,49 @@ document.getElementById('saveWashSettingsBtn').addEventListener('click',async()=
   toast('세차 대상 제외 설정을 저장했습니다.');
 });
 
+document.getElementById('maintenanceList').addEventListener('click',event=>{
+  const button=event.target.closest('[data-maintenance-record]');
+  if(button) openMaintenanceModal(button.dataset.maintenanceRecord);
+});
+
+document.getElementById('saveMaintenanceBtn').addEventListener('click',async()=>{
+  if(!isAdmin()){ toast('관리자만 소모품 교체 기록을 저장할 수 있습니다.'); return; }
+  if(!firebaseReady){ toast('DB 연결 후 교체 기록을 저장해 주세요.'); return; }
+  const item=CONSUMABLE_ITEMS.find(entry=>entry.id===selectedMaintenanceItemId);
+  if(!item){ toast('교체 항목을 다시 선택해 주세요.'); return; }
+  const date=document.getElementById('maintenanceDate').value;
+  const km=Number(document.getElementById('maintenanceKm').value);
+  const note=document.getElementById('maintenanceNote').value.trim();
+  const currentKm=getMaintenanceCurrentKm();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ toast('교체일을 입력해 주세요.'); return; }
+  if(date>getLocalDateIso()){ toast('교체일은 오늘 이후로 입력할 수 없습니다.'); return; }
+  if(!Number.isFinite(km)||km<0||!Number.isInteger(km)){ toast('교체 당시 누적거리를 정수로 입력해 주세요.'); return; }
+  if(km>currentKm){ toast(`교체 누적거리는 현재 ${currentKm.toLocaleString('ko-KR')}km보다 클 수 없습니다.`); return; }
+
+  const button=document.getElementById('saveMaintenanceBtn');
+  const backup=clone(state.maintenance);
+  button.disabled=true;
+  state.maintenance.replacements[item.id]={
+    date,km,note,
+    updatedAt:new Date().toISOString(),
+    updatedBy:String(currentSession?.employeeNo||'admin')
+  };
+  const synced=await saveState();
+  if(!synced){
+    state.maintenance=backup;
+    saveLocalState();
+    button.disabled=false;
+    renderMaintenance();
+    toast('DB 저장에 실패하여 교체 기록을 취소했습니다.');
+    return;
+  }
+  hideModal('maintenanceModal');
+  selectedMaintenanceItemId='';
+  button.disabled=false;
+  renderMaintenance();
+  toast(`${item.name} 교체 기록을 저장했습니다.`);
+});
+
 document.getElementById('loginBtn').addEventListener('click',openLoginModal);
 document.getElementById('changePasswordBtn').addEventListener('click',()=>openPasswordModal(false));
 document.getElementById('logoutBtn').addEventListener('click',async()=>{
@@ -3477,10 +3758,12 @@ DB에서도 해당 내역이 삭제됩니다.`)) return;
     state.tripLogs=backup;
     saveLocalState();
     renderTripLogs();
+    renderMaintenance();
     toast('DB 삭제에 실패하여 운행일지 삭제를 취소했습니다.');
     return;
   }
   renderTripLogs();
+  renderMaintenance();
   toast('운행일지를 DB에서 삭제했습니다.');
 });
 
