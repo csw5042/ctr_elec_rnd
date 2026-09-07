@@ -1695,7 +1695,7 @@ const PHOTO_MIN_QUALITY = 0.42;
 const PHOTO_RETENTION_COUNT = 10; // 최근 반납 사진 10개만 유지
 
 const VEHICLE_INFO = Object.freeze({
-  modelYear:2018,
+  purchaseYear:2017,
   maintenanceBaselineDate:'2026-09-07',
   maintenanceBaselineKm:103560
 });
@@ -2699,8 +2699,8 @@ function renderCar(){
     </div>
     <div class="info-grid">
       <div class="info-box">
-        <div class="label">연식</div>
-        <div class="value">${VEHICLE_INFO.modelYear}년식</div>
+        <div class="label">구매</div>
+        <div class="value">${VEHICLE_INFO.purchaseYear}년</div>
       </div>
       <div class="info-box">
         <div class="label">${available?'현재 주차 위치':'사용자'}</div>
